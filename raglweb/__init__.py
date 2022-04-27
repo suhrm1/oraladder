@@ -26,7 +26,7 @@ from flask import (
     current_app,
     g,
     render_template,
-    send_file,
+    send_file, jsonify,
 )
 
 
@@ -218,6 +218,13 @@ def games():
         unspoiled_games.append(g)
 
     return render_template('games.html', games=unspoiled_games)
+
+
+@app.route('/games/json')
+def games_json():
+    db = _db_get()
+    games = _get_games(db, 'outcomes')
+    return jsonify(games)
 
 
 def _get_player_info(db, profile_id):
