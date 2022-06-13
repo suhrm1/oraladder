@@ -44,3 +44,12 @@ Forfeit:
     - 6771
     - 16677
     - 16889
+
+Playoffs:
+    Masters Finale:
+        bestof: 5
+        players:
+            - 16222
+            - 6430
+            - 15421
+            - 6793
