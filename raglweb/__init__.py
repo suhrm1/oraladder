@@ -223,7 +223,8 @@ def games():
 @app.route('/games/json')
 def games_json():
     db = _db_get()
-    games = _get_games(db, 'outcomes')
+    games = _get_games(db, 'playoff_outcomes')
+    games += _get_games(db, 'outcomes')
     return jsonify(games)
 
 
