@@ -5,9 +5,9 @@
 
 {% block content %}
 <h2>Introduction</h2>
-<p>
-Red Alert Global League (RAGL), Season {{ cfg.SEASON }} is played starting {{
-cfg.START_TIME }}.  The end date can be flexible, however, we will aim to be
+<p>{{ cfg.LEAGUE_TITLE }} ({{ cfg.LEAGUE_TITLE_SHORT }}), Season {{ cfg.SEASON }}
+is played starting {{cfg.START_TIME }}.
+	The end date can be flexible, however, we will aim to be
 finished in {{ cfg.DURATION_WEEKS }} weeks on {{ cfg.END_TIME }}. This timespan
 includes up to {{ cfg.GROUP_STAGE_WEEKS }} weeks for the group stage and {{
 cfg.PLAYOFF_WEEKS }} weeks reserved for unforeseen delays, tiebreakers and
@@ -17,10 +17,10 @@ playoffs.
 <h2>The essentials</h2>
 <dl>
 	<dt>Game version:</dt><dd><a href="{{ cfg.RELEASE_URL }}">{{ cfg.RELEASE }}</a></dd>
-	<dt>Game server instances:</dt><dd>|ragl.org| RAGL Server <i>N</i></dd>
+	<dt>Game server instances:</dt><dd>{{ cfg.GAME_SERVER_NAMING_PATTERN }} <i>N</i></dd>
 	<dt>Map pack:</dt><dd><a href="{{ url_for('static', filename=map_pack_file) }}">{{ cfg.MAP_PACK_VERSION }}</a></dd>
-	<dt>Match schedule:</dt><dd><a href="{{ cfg.SCHEDULE_URL }}">Red Alert Global League - Schedule</a></dd>
-	<dt>Rules:</dt><dd><a href="{{ cfg.RULES_URL }}">Red Alert Global League - Rules</a></dd>
+	<dt>Match schedule:</dt><dd><a href="{{ cfg.SCHEDULE_URL }}">{{ cfg.LEAGUE_TITLE }} - Schedule</a></dd>
+	<dt>Rules:</dt><dd><a href="{{ cfg.RULES_URL }}">{{ cfg.LEAGUE_TITLE }} - Rules</a></dd>
 	<dt>Contact:</dt><dd><a href="{{ cfg.DISCORD_URL }}">{{ cfg.DISCORD_NAME }}</a></dd>
 	<dt>Start date:</dt><dd>{{ cfg.START_TIME }}</dd>
 	<dt>Current prize pool total:</dt><dd>{{ cfg.PRIZE_POOL }}<dd>

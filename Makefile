@@ -46,7 +46,7 @@ $(LADDER_DATABASES): instance
 	$(VENV)/bin/ora-ladder -d $@
 
 ragldev: initragldev
-	FLASK_APP=raglweb FLASK_ENV=development FLASK_RUN_PORT=5001 $(VENV)/bin/flask run
+	FLASK_APP=raglweb FLASK_ENV=development FLASK_RUN_PORT=5001 RAGLWEB_DATABASE="db-ragl.sqlite3" $(VENV)/bin/flask run
 
 initragldev: $(VENV) $(RAGL_MAP_PACK) instance/db-ragl.sqlite3 instance/ragl_config.py
 

@@ -5,6 +5,13 @@
 
 {% block content %}
 
+{% if cfg.PLAYOFF_SCHEMA_IMG %}
+<h2>Playoff Schema</h2>
+<div class="center">
+	<img src="{{ url_for('static', filename=cfg.PLAYOFF_SCHEMA_IMG) }}">
+</div>
+{% endif %}
+
 {% if playoffs %}
 
 {%- for playoff in playoffs %}
