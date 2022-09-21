@@ -6,6 +6,10 @@ RAGL_MAP_POOL = misc/map-pools/ragl-s12.maps
 RAGL_MAP_PACK_VERSION := $(shell $(PYTHON) misc/ragl_config.py MAP_PACK_VERSION)
 RAGL_MAP_PACK = raglweb/static/ragl-map-pack-$(RAGL_MAP_PACK_VERSION).zip
 
+TDGL_MAP_POOL = misc/map-pools/tdgl-s03.maps
+TDGL_MAP_PACK_VERSION := $(shell $(PYTHON) misc/tdgl_config.py MAP_PACK_VERSION)
+TDGL_MAP_PACK = raglweb/static/tdgl-map-pack-$(TDGL_MAP_PACK_VERSION).zip
+
 LADDER_STATIC = ladderweb/static/Chart.bundle.min.js  \
                 ladderweb/static/Chart.min.css        \
                 ladderweb/static/datatables.min.js    \
@@ -48,12 +52,23 @@ $(LADDER_DATABASES): instance
 ragldev: initragldev
 	FLASK_APP=raglweb FLASK_ENV=development FLASK_RUN_PORT=5001 RAGLWEB_DATABASE="db-ragl.sqlite3" $(VENV)/bin/flask run
 
+tdgldev: inittdgldev
+	FLASK_APP=raglweb FLASK_ENV=development FLASK_RUN_PORT=5001 RAGLWEB_DATABASE="db-tdgl.sqlite3" RAGL_CONFIG=../instance/tdgl_config.py $(VENV)/bin/flask run
+
 initragldev: $(VENV) $(RAGL_MAP_PACK) instance/db-ragl.sqlite3 instance/ragl_config.py
+
+inittdgldev: $(VENV) $(TDGL_MAP_PACK) instance/db-tdgl.sqlite3 instance/tdgl_config.py
 
 instance/db-ragl.sqlite3: instance
 	$(VENV)/bin/ora-ragl -d $@
 
+instance/db-tdgl.sqlite3: instance
+	$(VENV)/bin/ora-ragl -d $@ -p ../oraladder/laddertools/tdgl-s03.yml
+
 instance/ragl_config.py: misc/ragl_config.py instance
+	cp $< $@
+
+instance/tdgl_config.py: misc/tdgl_config.py instance
 	cp $< $@
 
 instance:
@@ -66,6 +81,9 @@ mappacks: $(RAGL_MAP_PACK)
 
 $(RAGL_MAP_PACK): $(VENV)
 	$(VENV)/bin/ora-mapstool $(RAGL_MAP_POOL) --pack $(RAGL_MAP_PACK)
+
+$(TDGL_MAP_PACK): $(VENV)
+	$(VENV)/bin/ora-mapstool $(TDGL_MAP_POOL) --pack $(TDGL_MAP_PACK)
 
 test: $(VENV)
 	$(VENV)/bin/pytest -v

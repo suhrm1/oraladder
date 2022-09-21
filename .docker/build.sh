@@ -20,7 +20,12 @@ docker build -t oraladder/base:latest -f Dockerfile_base .
 docker build -t oraladder/ragl:latest -f Dockerfile_ragl .
 
 #
-# 3. Build OpenRA ladder image
+# 3. Build TDGL image
+#
+docker build -t oraladder/ragl:latest -f Dockerfile_tdgl .
+
+#
+# 4. Build OpenRA ladder image
 #
 docker build -t oraladder/ladder:latest -f Dockerfile_ladder .
 
