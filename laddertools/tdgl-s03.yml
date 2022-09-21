@@ -1,0 +1,105 @@
+# Warning: This file is standard YAML, *not* in OpenRA mini-yaml
+
+Divisions:
+
+    Elite A:
+        - [13705, Kav]
+        - [8860, Moods]
+        - [3952, Anjew]
+
+    Elite B:
+        - [6766, ZxGanon]
+        - [15421, Gacius]
+        - [6430,  Blackened]
+
+    Elite C:
+        - [6748, Orb]
+        - [12760, MASTER]
+        - [12917, nudels]
+
+    Elite D:
+        - [6855, Borgmo]
+        - [16222, Despro]
+        - [7304, Upps]
+
+    Recruit A:
+        - [16338, Leaf]
+        - [16066, milkman]
+        - [8591, CuteFox]
+        - [6757, mechANIC]
+
+    Recruit B:
+        - [14834, Bobuck]
+        - [15428, BeTe]
+        - [12957, J!NX]
+        - [7509, Odourless]
+        - [7344, Icesinithol]
+
+Forfeit:
+    - 7344
+    - 7509
+    - 16222
+    - 14834
+    - 8860
+
+Playoffs:
+    Recruits Semi Finals 1:
+        bestof: 3
+        players:
+            - 16066
+            - 15428
+    Recruits Semi Finals 2:
+        bestof: 3
+        players:
+            - 12957
+            - 8591
+    Recruits Third Place:
+        bestof: 3
+        players:
+            - 8591
+            - 15428
+    Recruits Finals:
+        bestof: 5
+        players:
+            - 16066
+            - 12957
+    Elite A/D Quarter Finals 1:
+        bestof: 3
+        players:
+            - 13705
+            - 7304
+    Elite A/D Quarter Finals 2:
+        bestof: 3
+        players:
+            - 6855
+            - 3952
+    Elite B/C Quarter Finals 1:
+        bestof: 3
+        players:
+            - 6766
+            - 12917
+    Elite B/C Quarter Finals 2:
+        bestof: 3
+        players:
+            - 6748
+            - 6430
+    Elite Semi Finals 1:
+        bestof: 5
+        players:
+            - 13705
+            - 12917
+    Elite Semi Finals 2:
+        bestof: 5
+        players:
+            - 6855
+            - 6748
+    Elite Third Place:
+        bestof: 5
+        players:
+            - 6748
+            - 12917
+    Elite Finals:
+        bestof: 7
+        players:
+            - 13705
+            - 6855
