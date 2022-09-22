@@ -20,8 +20,10 @@ import datetime
 import hashlib
 import logging
 import os.path as op
+import shutil
 import sqlite3
 from collections import UserDict
+from math import ceil
 
 from filelock import FileLock, Timeout
 
@@ -198,7 +200,7 @@ def _preprocess_period(args):
             start_month = ((today.month - 1) & ~1) + 1
             start = datetime.date(today.year, start_month, 1)
         else:
-            start = today
+            start = datetime.date(year=1990, month=1, day=1)
         end = today + datetime.timedelta(days=1)
     return {"name": args.period, "start": start, "end": end}
 
@@ -253,8 +255,11 @@ def run():
     parser.add_argument('--start')
     parser.add_argument('--end')
     parser.add_argument('--bans-file')
+    parser.add_argument('-l', '--log-level', default="WARNING")
     parser.add_argument('replays', nargs='*')
     args = parser.parse_args()
+
+    logging.basicConfig(level=args.log_level)
 
     lockfile = args.database + '.lock'
     lock = FileLock(lockfile, timeout=1)
@@ -263,3 +268,83 @@ def run():
             _main(args)
     except Timeout:
         logging.error('Another instance of this application currently holds the %s lock file.', lockfile)
+
+
+def initialize_periodic_databases():
+    """A CLI tool to create multiple database files in batch
+
+    In the current implementation, this is customized to support 2-months-periods as used by the oraladder.net website.
+    For a given timespan based on "year" and "start-month" parameters, SQLite database files get created. Each DB file
+    contains data for a 2-month period starting with every 2nd month of a year (i.e. January, March, May, ...) which
+    will be named following the pattern db-{year}-{nr}.sqlite3 where {nr} is an integer counter starting with 1 for the
+    Jan-Feb period going up to 6 for the Nov-Dec period of the given year.
+
+    If invoked with a start month that does not mark the beginning of one of these periods, it will get corrected by
+    subtracting one month so that the resulting DB files will be true to the defined format/content.
+
+    For less customized database file creation, refer to the `ora-ladder` CLI tool utilizing "start" and "end"
+    parameters.
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-s', '--schema', default=op.join(op.dirname(__file__), 'ladder.sql'))
+    parser.add_argument('-r', '--ranking', choices=ranking_systems.keys(), default='trueskill')
+    parser.add_argument('--bans-file')
+    parser.add_argument('-m', '--mod', default='ra')
+    parser.add_argument('-y', '--year', type=int, default=datetime.date.today().year)
+    parser.add_argument('--start-month', type=int, default='1', help="Number between 1 and 12")
+    parser.add_argument('-l', '--log-level', default='WARNING')
+    parser.add_argument('replays', nargs='*')
+    args = parser.parse_args()
+
+    logging.basicConfig(level=args.log_level)
+
+    # Correct to previous month for even-numbered months (February, April, ...)
+    start_month = args.start_month - (args.start_month & 1 == 0)
+
+    start_date = datetime.date(year=args.year, month=start_month, day=1)
+    season_counter = ceil(start_month/2)
+    prev_db_name = None
+
+    while True:
+        # calculate the seasons end date (start + 2 months - 1 day)
+        end_date = datetime.date(start_date.year, (start_date.month + 2) % 12, start_date.day)
+        # in case we have reached January again, update year
+        if end_date.month == 1:
+            end_date = end_date.replace(year=end_date.year + 1)
+        end_date -= datetime.timedelta(days=1)
+
+        # prepare arguments for creating the actual database files
+        db_name = f"db-{args.mod}-{start_date.year}-{season_counter}.sqlite3"
+
+        # If the first database from the batch has already been created, copy that to use it as a base for the
+        # next iteration; this reduces API calls to the OpenRA user account service
+        if prev_db_name is not None:
+            shutil.copyfile(prev_db_name, db_name)
+            logging.info(f"Copied {prev_db_name} to {db_name}")
+
+        # Track database filename for next iteration
+        prev_db_name = db_name
+
+        lockfile = db_name + '.lock'
+        args.start = str(start_date)
+        args.end = str(end_date)
+        args.database = db_name
+        args.period = ""
+
+        # create the actual database files using _main() method
+        try:
+            with FileLock(lockfile, timeout=1):
+                _main(args)
+                logging.info(f"Created database file {db_name} using "
+                             f"start date {start_date}, end date {end_date}, source "
+                             f"folder {args.replays}.")
+        except Timeout:
+            logging.error('Another instance of this application currently holds the %s lock file.', lockfile)
+
+        #
+        start_date = start_date.replace(month=(start_date.month + 2) % 12)
+        season_counter += 1
+
+        # stop the loop if we completed a year or if the start date is in the future
+        if start_date.month == 1 or start_date > datetime.date.today():
+            break
