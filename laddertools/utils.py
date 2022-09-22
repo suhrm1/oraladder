@@ -20,6 +20,7 @@ import os
 import os.path as op
 import logging
 from datetime import date
+from typing import Union
 from urllib.request import urlopen
 
 from . import miniyaml, replay
@@ -86,23 +87,15 @@ def _parse_replay(results, accounts_db, filename):
         logging.info(f'{op.basename(filename)}: recorded')
 
 
-def _filter_period(results, period):
-    if period is None:
+def _filter_period(results, period_dict: Union[dict, None]):
+    if period_dict is None:
         return results
-
-    today = date.today()
-    if period == '1m':
-        start = date(today.year, today.month, 1)
-        return [r for r in results if r.end_time.date() >= start]
-    elif period == '2m':
-        start_month = ((today.month - 1) & ~1) + 1
-        start = date(today.year, start_month, 1)
-        return [r for r in results if r.end_time.date() >= start]
-
-    assert False
+    start = period_dict["start"]
+    end = period_dict["end"]
+    return [r for r in results if (start <= r.end_time.date() <= end)]
 
 
-def get_results(accounts_db, replays, period=None):
+def get_results(accounts_db, replays, period_dict: Union[dict, None] = None):
     results = []
     for filename in replays:
         if op.isdir(filename):
@@ -111,7 +104,7 @@ def get_results(accounts_db, replays, period=None):
                     _parse_replay(results, accounts_db, op.join(root, name))
         else:
             _parse_replay(results, accounts_db, filename)
-    results = _filter_period(results, period)
+    results = _filter_period(results, period_dict)
     return sorted(results, key=lambda r: r.end_time)
 
 

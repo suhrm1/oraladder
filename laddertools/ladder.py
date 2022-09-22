@@ -15,18 +15,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-
-import os
-import os.path as op
+import argparse
+import datetime
 import hashlib
 import logging
-import argparse
+import os.path as op
 import sqlite3
-from filelock import FileLock, Timeout
 from collections import UserDict
 
-from .replay import GamePlayerInfo
+from filelock import FileLock, Timeout
+
 from .ranking import ranking_systems
+from .replay import GamePlayerInfo
 from .utils import get_results, get_profile_ids
 
 
@@ -172,6 +172,37 @@ def _get_players_outcomes(accounts_db, results, ranking_system):
     return players, outcomes
 
 
+def _preprocess_period(args):
+    """Forms CLI arguments "period", "start", and "end" into a dictionary
+
+    Possible combinations:
+        - period in {1m, 2m}, start and end missing: returns the 1 or 2 month period
+        - period is any string, start an ISO format date string, end missing:
+          returns the period from start date to "now" (actually, "tomorrow")
+        - period is any string, start and end are ISO format date strings:
+          returns the period from start to end date
+
+    Returns a dict with elements, "name" (str), "start", "end" (datetime.date)
+    """
+    today = datetime.date.today()
+    if args.start:
+        start = datetime.date.fromisoformat(args.start)
+        if args.end:
+            end = datetime.date.fromisoformat(args.end)
+        else:
+            end = today + datetime.timedelta(days=1)
+    else:
+        if args.period == '1m':
+            start = datetime.date(today.year, today.month, 1)
+        elif args.period == '2m':
+            start_month = ((today.month - 1) & ~1) + 1
+            start = datetime.date(today.year, start_month, 1)
+        else:
+            start = today
+        end = today + datetime.timedelta(days=1)
+    return {"name": args.period, "start": start, "end": end}
+
+
 def _main(args):
     conn = sqlite3.connect(args.database)
 
@@ -190,7 +221,8 @@ def _main(args):
     request_accounts = c.execute('SELECT * FROM accounts')
     accounts_db = {fp: (pid, pname, avatar_url) for fp, pid, pname, avatar_url in request_accounts.fetchall()}
 
-    results = get_results(accounts_db, args.replays, args.period)
+    period_dict = _preprocess_period(args)
+    results = get_results(accounts_db, args.replays, period_dict)
 
     players, outcomes = _get_players_outcomes(accounts_db, results, args.ranking)
 
@@ -218,6 +250,8 @@ def run():
     parser.add_argument('-s', '--schema', default=op.join(op.dirname(__file__), 'ladder.sql'))
     parser.add_argument('-r', '--ranking', choices=ranking_systems.keys(), default='trueskill')
     parser.add_argument('-p', '--period')
+    parser.add_argument('--start')
+    parser.add_argument('--end')
     parser.add_argument('--bans-file')
     parser.add_argument('replays', nargs='*')
     args = parser.parse_args()
