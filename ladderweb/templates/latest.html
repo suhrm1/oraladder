@@ -3,6 +3,14 @@
 {% block title %}Latest games{% endblock %}
 
 {% block content %}
+{% if period_info %}
+	<div>
+		<p>
+			<strong>Selected Period</strong>: from <strong>{{ period_info.start }}</strong>
+			to <strong>{{ period_info.end }}</strong> ({{ period_info.duration }})
+		</p>
+	</div>
+{% endif %}
 <table id="latest-table">
 	<thead>
 		<tr>

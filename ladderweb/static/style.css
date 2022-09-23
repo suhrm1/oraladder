@@ -51,6 +51,11 @@ h1 {
 
 h2 {
 	border-bottom: 1px solid;
+	margin-top: 2.5em;
+}
+
+h3 {
+	margin-top: 1.5em;
 }
 
 table tbody tr:nth-child(odd) {
@@ -106,6 +111,7 @@ table tbody td.map {
 
 img.avatar {
 	float: right;
+	margin: 4px;
 }
 
 span.diffup   { font-weight: bold; color: #72ff72; }

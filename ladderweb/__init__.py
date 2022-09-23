@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2020
+# Copyright (C) 2020-2022
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,19 +14,19 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-
 import re
 import colorsys
 import os
 import os.path as op
 import json
+from sqlite3 import Connection
+from typing import Optional, Tuple
+
 import numpy as np
 import sqlite3
-import calendar
 from datetime import date, timedelta
 from flask import (
     Flask,
-    current_app,
     escape,
     g,
     jsonify,
@@ -35,6 +35,8 @@ from flask import (
     send_file,
     url_for,
 )
+
+from ladderweb.seasons import fill_yearly_seasons, get_season_info
 from .mods import mods
 
 
@@ -45,26 +47,51 @@ _cfg = dict(
 )
 
 
-_allowed_mods = list(mods.keys())
-_allowed_periods = ('2m', '1m', 'all')
-
-
-def _get_request_params():
+def _get_request_params() -> Tuple[str, str, str]:
+    """Extract HTTP request parameters for endpoint/URL route, mod, period.
+    """
+    _allowed_mods = app.config["ALLOWED_MODS"]
+    _seasons = app.config["LADDER_SEASONS"]
     endpoint = request.endpoint
-    mod = request.args.get('mod', _allowed_mods[0])
-    period = request.args.get('period', _allowed_periods[0])
+    mod = request.args.get("mod", _allowed_mods[0])
     if mod not in _allowed_mods:
         mod = _allowed_mods[0]
-    if period not in {'1m', '2m', 'all'}:
-        period = _allowed_periods[0]
+    _allowed_periods = list(_seasons[mod].keys())
+    _default_period_key = app.config.get("LADDER_DEFAULT_SEASON_KEY", "2m")
+    period = request.args.get("period", _default_period_key)
+    if period not in _allowed_periods:
+        period = _default_period_key
     return endpoint, mod, period
 
 
-def _db_get():
-    if 'db' not in g:
-        _, mod, period = _get_request_params()
-        dbname = f'db-{mod}-{period}.sqlite3'
+def _filter_available_databases(seasons_dict: dict):
+    """Filters out all seasons/periods from the dictionary for which no database exists
+
+    Input dictionary should be created using seasons.fill_yearly_seasons method.
+    """
+    to_delete = []
+    for mod, seasons in seasons_dict.items():
+        for season_name, db_filename in seasons.items():
+            file = op.join(app.instance_path, db_filename)
+            if not op.exists(file):
+                to_delete.append((mod, season_name))
+    for mod, season_name in to_delete:
+        del seasons_dict[mod][season_name]
+    return seasons_dict
+
+
+def _db_get(db_filename: Optional[str] = None) -> Connection:
+    if db_filename is not None:
+        dbname = db_filename
         db = op.join(app.instance_path, dbname)
+        conn = sqlite3.connect(db, detect_types=sqlite3.PARSE_DECLTYPES)
+        conn.row_factory = sqlite3.Row
+        return conn
+    elif 'db' not in g:
+        _, mod, period = _get_request_params()
+        dbname = app.config.get("LADDER_SEASONS")[mod][period]
+        db = op.join(app.instance_path, dbname)
+        app.logger.debug(f"Opening database file {db}")
         g.db = sqlite3.connect(db, detect_types=sqlite3.PARSE_DECLTYPES)
         g.db.row_factory = sqlite3.Row
     return g.db
@@ -83,6 +110,15 @@ def create_app():
 
 
 app = create_app()
+app.config.from_prefixed_env()
+app.config["LADDER_SEASONS"] = _filter_available_databases(
+    fill_yearly_seasons(
+        start_year=app.config.get("LADDER_SEASONS_START_YEAR", date.today().year),
+        start_month=app.config.get("LADDER_SEASONS_START_MONTH", 1)
+    )
+)
+app.config["ALLOWED_MODS"] = list(app.config["LADDER_SEASONS"].keys())
+app.logger.debug(f"Loaded available mods and seasons: {app.config['LADDER_SEASONS']}")
 
 
 @app.context_processor
@@ -97,18 +133,6 @@ def dated_url_for(endpoint, **values):
             file_path = op.join(app.root_path, endpoint, filename)
             values['q'] = int(os.stat(file_path).st_mtime)
     return url_for(endpoint, **values)
-
-
-def _get_current_period():
-    today = date.today()
-    start_month = ((today.month - 1) & ~1) + 1
-    end_month = start_month + 1
-    _, end_day = calendar.monthrange(today.year, end_month)
-    return dict(
-        start=date(today.year, start_month, 1),
-        end=date(today.year, end_month, end_day),
-        duration='2 months',
-    )
 
 
 def _args_url(**args):
@@ -154,16 +178,25 @@ def _get_menu(**args):
         ret['mods'] = mods_menu
 
     period_pages = {'leaderboard', 'latest_games', 'player', 'globalstats'}
+
+    periods = app.config["LADDER_SEASONS"][cur_mod]
+    period_options = []
+    for period in periods.keys():
+        if period == "2m":
+            caption = "Current season"
+        elif period == "all":
+            caption = "All time"
+        else:
+            caption = period
+        period_options.append((caption, period))
+
     if cur_endpoint in period_pages:
         ret['period'] = [
             dict(
                 caption=caption,
                 url=url_for(cur_endpoint, **args) + _args_url(period=period),
                 active=period == cur_period,
-            ) for caption, period in (
-                ('This period', '2m'),
-                ('All time', 'all'),
-            )
+            ) for caption, period in period_options
         ]
 
     return ret
@@ -173,12 +206,13 @@ def _get_menu(**args):
 def leaderboard():
     menu = _get_menu()
     ajax_url = url_for('leaderboard_js') + _args_url()
-    _, _, cur_period = _get_request_params()
+    _, cur_mod, cur_period = _get_request_params()
     return render_template(
         'leaderboard.html',
         navbar_menu=menu,
         ajax_url=ajax_url,
-        period_info=_get_current_period() if cur_period != 'all' else None,
+        period_info=get_season_info(cur_period) if cur_period != 'all' else None,
+        mod_id=cur_mod,
     )
 
 
@@ -224,9 +258,16 @@ def leaderboard_js():
 
 @app.route('/latest')
 def latest_games():
+    _, cur_mod, cur_period = _get_request_params()
     menu = _get_menu()
     ajax_url = url_for('latest_games_js') + _args_url()
-    return render_template('latest.html', navbar_menu=menu, ajax_url=ajax_url)
+    return render_template(
+        'latest.html',
+        navbar_menu=menu,
+        ajax_url=ajax_url,
+        period_info=get_season_info(cur_period),
+        mod_id=cur_mod
+    )
 
 
 _tag_regex = re.compile(r'\s*\[[^\]]*\]')
@@ -339,6 +380,35 @@ def _get_player_ratings(db, profile_id):
     )
 
 
+def _get_player_season_history(mod, profile_id):
+    seasons = app.config["LADDER_SEASONS"][mod]
+    player_season_history = []
+    for season_name, db_filename in seasons.items():
+        db_file = op.join(app.instance_path, db_filename)
+        with _db_get(db_file) as db:
+            row = db.execute(f'''select rating, wins, losses, (wins+losses) as games,
+                (
+                    SELECT strftime('%M:%S', AVG(julianday(end_time) - julianday(start_time)))
+                    FROM outcomes
+                    WHERE {profile_id} IN (profile_id0, profile_id1)
+                ) AS avg_game_duration 
+                from players where profile_id={profile_id}''').fetchone()
+            if row is not None:
+                stats = dict(row)
+                rank = db.execute(f'''select count(profile_id) from players 
+                    where rating>{stats['rating']} AND NOT banned''').fetchone()[0]
+
+                stats['rank'] = rank + 1
+                stats['trophy'] = ''
+                if rank < 3:
+                    stats['trophy'] = ['🥇', '🥈', '🥉'][rank]
+                stats['ratio'] = "{:.2f}%".format(stats['wins'] / stats['games'] * 100)
+                stats['season'] = get_season_info(season_name)
+
+                player_season_history.append(stats)
+    return player_season_history
+
+
 def _get_player_info(db, profile_id):
     cur = db.execute('''
         SELECT
@@ -351,7 +421,15 @@ def _get_player_info(db, profile_id):
             SELECT strftime('%M:%S', AVG(julianday(end_time) - julianday(start_time)))
             FROM outcomes
             WHERE :pid IN (profile_id0, profile_id1)
-        ) AS avg_game_duration
+        ) AS avg_game_duration,
+        (
+            SELECT MIN(end_time) FROM outcomes
+            WHERE :pid IN (profile_id0, profile_id1)
+        ) AS first_game,
+        (
+            SELECT MAX(end_time) FROM outcomes
+            WHERE :pid IN (profile_id0, profile_id1)
+        ) AS last_game
         FROM players WHERE profile_id=:pid AND NOT banned
         LIMIT 1''',
         dict(pid=profile_id)
@@ -484,13 +562,24 @@ def player_games_js(profile_id):
 @app.route('/player/<int:profile_id>')
 def player(profile_id):
     db = _db_get()
+    _, cur_mod, cur_period =_get_request_params()
+    alltime_db_name = app.config["LADDER_SEASONS"][cur_mod]['all']
+    alltime_db = _db_get(alltime_db_name)
     menu = _get_menu(profile_id=profile_id)
 
+    # load current period database first to see if player was active during this
     player = _get_player_info(db, profile_id)
     if not player:
-        return render_template('noplayer.html', navbar_menu=menu, profile_id=profile_id)
+        return render_template('noplayer.html', navbar_menu=menu, profile_id=profile_id,
+                               mod_id=cur_mod)
 
+    # load all-time player data for all-time information
+    player = _get_player_info(alltime_db, profile_id)
+    player = dict(player)
+
+    player['seasons'] = _get_player_season_history(mod=cur_mod, profile_id=profile_id)
     ajax_url = url_for('player_games_js', profile_id=profile_id) + _args_url()
+
     return render_template(
         'player.html',
         navbar_menu=menu,
@@ -499,6 +588,8 @@ def player(profile_id):
         rating_stats=_get_player_ratings(db, profile_id),
         faction_stats=_get_player_faction_stats(db, profile_id),
         map_stats=_get_player_map_stats(db, profile_id),
+        mod_id=cur_mod,
+        season_info=get_season_info(cur_period),
     )
 
 
@@ -551,7 +642,7 @@ def _get_global_map_stats(db):
     )
 
 
-def _get_activity_stats(db):
+def _get_activity_stats(db, start_date: Optional[date] = None, end_date: Optional[date] = None):
     cur = db.execute('''
         SELECT
             date(end_time) as date,
@@ -564,8 +655,10 @@ def _get_activity_stats(db):
     if not outcomes_per_day:
         return dict(dates=None, data=None, games_per_day=0)
 
-    start_date = date.fromisoformat(outcomes_per_day[0]['date'])
-    end_date = date.today()
+    if start_date is None:
+        start_date = date.fromisoformat(outcomes_per_day[0]['date'])
+    if end_date is None:
+        end_date = date.fromisoformat(outcomes_per_day[-1:][0]['date'])
     nb_days = (end_date - start_date).days
     all_days = [(start_date + timedelta(n)).strftime('%Y-%m-%d') for n in range(nb_days + 1)]
     db_records = {o['date']: o['count'] for o in outcomes_per_day}
@@ -598,6 +691,7 @@ def globalstats():
     cur.close()
 
     menu = _get_menu()
+    _, cur_mod, cur_period = _get_request_params()
     return render_template(
         'globalstats.html',
         navbar_menu=menu,
@@ -607,6 +701,8 @@ def globalstats():
         nb_games=nb_games,
         nb_players=nb_players,
         avg_duration=avg_duration,
+        period_info=get_season_info(cur_period) if cur_period != 'all' else None,
+        mod_id=cur_mod,
     )
 
 
@@ -614,8 +710,9 @@ def globalstats():
 @app.route('/info')
 def info():
     menu = _get_menu()
-    _, cur_mod, _ = _get_request_params()
-    return render_template('info.html', navbar_menu=menu, period_info=_get_current_period(), mod=mods[cur_mod])
+    _, cur_mod, cur_period = _get_request_params()
+    return render_template('info.html', navbar_menu=menu, period_info=get_season_info("2m"), mod=mods[cur_mod],
+                           mod_id=cur_mod)
 
 
 @app.route('/replay/<replay_hash>')
