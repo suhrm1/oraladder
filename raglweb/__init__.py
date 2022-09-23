@@ -58,8 +58,10 @@ def _ordered_alphanumerically(x: str, y: str) -> bool:
 
 def create_app():
     app = Flask(__name__)
+    db_path=op.join(app.instance_path, os.getenv('RAGLWEB_DATABASE', 'db-ragl.sqlite3'))
+    print("Database path: " + db_path)
     app.config.from_mapping(
-        DATABASE=op.join(app.instance_path, 'db-ragl.sqlite3'),
+        DATABASE=db_path,
     )
     cfg_file = os.environ.get('RAGL_CONFIG', op.join(app.instance_path, 'ragl_config.py'))
     app.config.from_pyfile(cfg_file)
@@ -69,6 +71,7 @@ def create_app():
 
 app = create_app()
 
+cfg = app.config
 
 @app.route('/')
 def scoreboards():
@@ -136,7 +139,7 @@ def scoreboards():
 
         scoreboards[division] = rows
 
-    return render_template('scoreboards.html', scoreboards=scoreboards)
+    return render_template('scoreboards.html', cfg=cfg, scoreboards=scoreboards)
 
 
 def _get_games(db, outcomes_table, order='DESC'):
@@ -211,7 +214,7 @@ def playoffs():
             matchups=matchups,
         ))
 
-    return render_template('playoffs.html', games=games, playoffs=playoffs_data)
+    return render_template('playoffs.html', cfg=cfg, games=games, playoffs=playoffs_data)
 
 
 @app.route('/games')
@@ -227,7 +230,7 @@ def games():
             game.update(p0=p1, p0_id=p1_id, p1=p0, p1_id=p0_id)
         game['winner'] = p0
 
-    return render_template('games.html', games=games)
+    return render_template('games.html', cfg=cfg, games=games)
 
 
 @app.route('/games/json')
@@ -386,15 +389,16 @@ def player(profile_id):
         end_time=group_stage_end_time,
     )
 
-    return render_template('player.html', player=player, matches=matches)
+    return render_template('player.html', player=player, matches=matches, cfg=cfg)
 
 
 @app.route('/info')
 def info():
     map_pack_version = app.config['MAP_PACK_VERSION']
+    league_title_abbreviation = app.config['LEAGUE_TITLE_SHORT'].lower()
     return render_template(
         'info.html',
-        map_pack_file=f'ragl-map-pack-{map_pack_version}.zip',
+        map_pack_file=f'{league_title_abbreviation}-map-pack-{map_pack_version}.zip',
         cfg=app.config,
     )
 
@@ -407,7 +411,8 @@ def _make_division_prefix(division_title):
         division_prefix = division_prefix[:-1]
     division_prefix += ''.join(word[0] for word in words[1:])
     season = app.config['SEASON']
-    prefix = f'RAGL-S{season:02d}-{division_prefix}-'
+    league = app.config['LEAGUE_TITLE_SHORT']
+    prefix = f'{league}-S{season:02d}-{division_prefix}-'
     return prefix
 
 
@@ -438,7 +443,7 @@ def replay(replay_hash):
     return send_file(
         fullpath,
         as_attachment=True,
-        attachment_filename=attachment_filename
+        download_name=attachment_filename
     )
 
 
@@ -455,7 +460,8 @@ def replay_playoff(replay_hash):
     row = cur.fetchone()
 
     season = app.config['SEASON']
-    prefix = f'RAGL-S{season:02d}-PLAYOFF-'
+    league = app.config['LEAGUE_TITLE_SHORT']
+    prefix = f'{league}-S{season:02d}-PLAYOFF-'
 
     fullpath = row['filename']
     original_filename = op.basename(fullpath)
@@ -464,5 +470,5 @@ def replay_playoff(replay_hash):
     return send_file(
         fullpath,
         as_attachment=True,
-        attachment_filename=attachment_filename
+        download_name=attachment_filename
     )

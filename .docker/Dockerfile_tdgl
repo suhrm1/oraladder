@@ -1,0 +1,10 @@
+FROM oraladder/base:latest
+
+RUN make inittdgldev
+
+RUN . venv/bin/activate && pip install gunicorn
+
+ENV RAGLWEB_DATABASE="db-tdgl.sqlite3"
+ENV RAGL_CONFIG=../instance/tdgl_config.py
+
+CMD ["venv/bin/gunicorn", "-b", "0.0.0.0:8000", "raglweb:app"]

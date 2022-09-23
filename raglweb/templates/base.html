@@ -1,12 +1,12 @@
 <!doctype html>
 <head>
-	<title>RAGL - {% block title %}{% endblock %}</title>
+	<title>{{ cfg.LEAGUE_TITLE_SHORT }} - {% block title %}{% endblock %}</title>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width" />
 	<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <header>
-	<img src="{{ url_for('static', filename='ragl-logo.png') }}" alt="RAGL">
+	<img src="{{ url_for('static', filename=cfg.TITLE_IMAGE) }}" alt="{{ cfg.LEAGUE_TITLE_SHORT }}">
 </header>
 <nav>
 	<ul>

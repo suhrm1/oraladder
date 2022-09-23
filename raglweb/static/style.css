@@ -29,8 +29,18 @@ p {
 	text-align: justify;
 }
 
+div.center {
+    margin: auto;
+    width: fit-content;
+    max-width: 100%;
+}
+
+header {
+    text-align: center;
+}
+
 header img {
-	width: 100%;
+	max-width: 100%;
 }
 
 a {
