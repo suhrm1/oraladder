@@ -2,7 +2,7 @@ PYTHON ?= python3
 CURL   ?= curl
 VENV   ?= venv
 
-RAGL_MAP_POOL = misc/map-pools/ragl-s12.maps
+RAGL_MAP_POOL = misc/map-pools/ragl-s13.maps
 RAGL_MAP_PACK_VERSION := $(shell $(PYTHON) misc/ragl_config.py MAP_PACK_VERSION)
 RAGL_MAP_PACK = raglweb/static/ragl-map-pack-$(RAGL_MAP_PACK_VERSION).zip
 
@@ -30,7 +30,7 @@ JQUERY_VERSION = 3.6.0
 DATATABLES_VERSION = 1.10.24
 
 ladderdev: initladderdev
-	FLASK_APP=ladderweb FLASK_ENV=development FLASK_RUN_PORT=5000 $(VENV)/bin/flask run
+	FLASK_APP=ladderweb FLASK_DEBUG=True FLASK_RUN_PORT=5000 $(VENV)/bin/flask run
 
 initladderdev: $(VENV) $(LADDER_STATIC) $(LADDER_DATABASES)
 
@@ -47,7 +47,7 @@ ladderweb/static/jquery.min.js:
 	$(CURL) -L https://code.jquery.com/jquery-$(JQUERY_VERSION).min.js -o $@
 
 $(LADDER_DATABASES): instance
-	$(VENV)/bin/ora-ladder -d $@
+	([[ -f $@ ]] ||  $(VENV)/bin/ora-ladder -d $@)
 
 ragldev: initragldev
 	FLASK_APP=raglweb FLASK_ENV=development FLASK_RUN_PORT=5001 RAGLWEB_DATABASE="db-ragl.sqlite3" $(VENV)/bin/flask run
