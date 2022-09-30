@@ -1,1 +1,40 @@
 # Warning: This file is standard YAML, *not* in OpenRA mini-yaml
+
+Divisions:
+
+    Masters:
+        - [16222, despro]
+        - [13705, Kav]
+        - [6430, Blackened]
+        - [15421, Gajcus]
+        - [6793, maceman]
+        - [12283, dang_shot]
+        - [11913, Duke Bones]
+        - [6771, Mr Cloudy]
+        - [7304, Upps]
+        - [11099, Dodder]
+        - [11442, Eugenator]
+        - [3952, anjew]
+        - [15899, tux]
+
+    Minions:
+        - [8869, Sigil]
+        - [5292, Mo]
+        - [13710, Ekanim]
+        - [15428, bete]
+        - [16338, Pvt_Leaf]
+        - [6751, Tailix Killa Mentor]
+        - [7387, TTTPPP]
+        - [16066, milkman]
+        - [6881, spetsnaz84]
+        - [14769, chouchani]
+        - [7714, Nilhall]
+        - [12957, J!NX]
+        - [9984, jungle]
+
+Forfeit:
+
+Forfeit_Games:
+    # - [ winner_id, loser_id, decision date (YYYY-MM-DD), reason ]
+
+Playoffs:
