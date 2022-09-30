@@ -32,9 +32,9 @@ Divisions:
         - [12957, J!NX]
         - [9984, jungle]
 
-Forfeit:
+#Forfeit:
 
-Forfeit_Games:
+#Forfeit_Games:
     # - [ winner_id, loser_id, decision date (YYYY-MM-DD), reason ]
 
-Playoffs:
+#Playoffs:

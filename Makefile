@@ -60,7 +60,7 @@ initragldev: $(VENV) $(RAGL_MAP_PACK) instance/db-ragl.sqlite3 instance/ragl_con
 inittdgldev: $(VENV) $(TDGL_MAP_PACK) instance/db-tdgl.sqlite3 instance/tdgl_config.py
 
 instance/db-ragl.sqlite3: instance
-	$(VENV)/bin/ora-ragl -d $@
+	$(VENV)/bin/ora-ragl -d $@ -p ../oraladder/laddertools/ragl-s13.yml
 
 instance/db-tdgl.sqlite3: instance
 	$(VENV)/bin/ora-ragl -d $@ -p ../oraladder/laddertools/tdgl-s03.yml
