@@ -33,7 +33,8 @@ Divisions:
         - [9984, jungle]
         - [17607, BigHALK]
 
-#Forfeit:
+Forfeit:
+    - 6771
 
 #Forfeit_Games:
     # - [ winner_id, loser_id, decision date (YYYY-MM-DD), reason ]
