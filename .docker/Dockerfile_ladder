@@ -1,7 +1,25 @@
 FROM oraladder/base:latest
 
-RUN make initladderdev
+# https://github.com/chartjs/Chart.js/releases/latest
+ENV CHART_JS_VERSION="2.9.3"
+# https://github.com/jquery/jquery/releases/latest
+ENV JQUERY_VERSION="3.6.0"
+# https://github.com/DataTables/DataTables/releases/latest
+ENV DATATABLES_VERSION="1.10.24"
 
-RUN . venv/bin/activate && pip install gunicorn
+RUN cd ladderweb/static/ \
+    && curl -L https://cdnjs.cloudflare.com/ajax/libs/Chart.js/${CHART_JS_VERSION}/Chart.min.css -o Chart.min.css \
+    && curl -L https://cdnjs.cloudflare.com/ajax/libs/Chart.js/${CHART_JS_VERSION}/Chart.bundle.min.js -o Chart.bundle.min.js \
+    && curl -L https://cdn.datatables.net/v/dt/dt-${DATATABLES_VERSION}/datatables.min.js -o datatables.min.js \
+    && curl -L https://code.jquery.com/jquery-${JQUERY_VERSION}.min.js -o jquery.min.js
+
+RUN python3 -m venv venv/
+
+RUN . venv/bin/activate && pip install gunicorn && pip install -e .
+
+RUN mkdir instance \
+    && for DB in "ra-all" "ra-2m" "td-all" "td-2m";  \
+        do venv/bin/ora-ladder -d "instance/db-${DB}.sqlite3";  \
+        done;
 
 CMD ["venv/bin/gunicorn", "-b", "0.0.0.0:8000", "ladderweb:app"]

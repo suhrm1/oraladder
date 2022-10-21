@@ -21,7 +21,7 @@ LADDER_DATABASES = instance/db-ra-all.sqlite3 \
                    instance/db-td-2m.sqlite3  \
 
 # https://github.com/chartjs/Chart.js/releases/latest
-CHART_JS_VERSION = 2.9.4
+CHART_JS_VERSION = 2.9.3
 
 # https://github.com/jquery/jquery/releases/latest
 JQUERY_VERSION = 3.6.0
@@ -47,7 +47,7 @@ ladderweb/static/jquery.min.js:
 	$(CURL) -L https://code.jquery.com/jquery-$(JQUERY_VERSION).min.js -o $@
 
 $(LADDER_DATABASES): instance
-	$(VENV)/bin/ora-ladder -d $@
+	([ -f $@ ] ||  $(VENV)/bin/ora-ladder -d $@)
 
 ragldev: initragldev
 	FLASK_APP=raglweb FLASK_ENV=development FLASK_RUN_PORT=5001 RAGLWEB_DATABASE="db-ragl.sqlite3" $(VENV)/bin/flask run
