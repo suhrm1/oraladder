@@ -7,6 +7,45 @@ mods = dict(
         supports_analysis=True,
         mappacks=(
             dict(
+                label='2022.1 (2022-10-30)',
+                filename='ladder-map-pack-2022.1.zip',
+                changelog='''
+                    The 2022.1 map pack is an updated version that adds the latest 
+                    <a href="https://github.com/tttppp/ora-balance-iteration/blob/master/CHANGELOG.md#35">Balance Iteration 3.5</a> 
+                    and RAGL Season 13 maps to the selection.
+                ''',
+                maps=(
+                    ('Abendland', 'Pinkthoth'),
+                    ('Agita', 'kazu'),
+                    ('Anar', 'Pinkthoth'),
+                    ('Argon', 'kazu'),
+                    ('Assault', 'Lad'),
+                    ('Barentsøya (BB)', 'Lucian'),
+                    ('Bucharest', 'poop'),
+                    ('Circulate', 'i like men'),
+                    ('Cog of War', 'netnazgul'),
+                    ('Dirge', 'Pinkthoth'),
+                    ('Discovery', 'Lad'),
+                    ('Elevation', 'i like men'),
+                    ('Fairyland', 'Lad'),
+                    ('Forgotten Plains', 'Eskimo'),
+                    ('Greener Pastures', 'Lad'),
+                    ('Infection', 'wippie'),
+                    ('Isle of Wight', 'Lad'),
+                    ('Krakow', 'poop'),
+                    ('Moonopoly', 'Lad'),
+                    ('Overkill', 'MegaTank'),
+                    ('Pity Light', 'Widow'),
+                    ('Race Tracks', 'Blackened'),
+                    ('Scorched Earth', 'J MegaTank'),
+                    ('Sompio', 'Pinkthoth'),
+                    ('Sun Struggle', 'Lad'),
+                    ('Territorial', 'Lad'),
+                    ('Trapped', 'Blackened'),
+                    ('Yukon Territory', 'wippie'),
+                ),
+            ),
+            dict(
                 label='2022.0 (2022-01-07)',
                 filename='ladder-map-pack-2022.0.zip',
                 changelog='''
