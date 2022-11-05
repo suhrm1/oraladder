@@ -10,7 +10,7 @@ function replay_render(data, type, row, meta) {
 }
 
 function get_diff_html(diff) {
-	var cls = 'diff' + (diff >= 0 ? 'up' : 'down');
+	var cls = 'diff' + (diff > 0 ? 'up' : (diff < 0 ? 'down' : 'neutral'));
 	return '<span class=' + cls + '>' + diff + '</span>'
 }
 
