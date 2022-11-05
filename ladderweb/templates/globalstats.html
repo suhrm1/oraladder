@@ -3,6 +3,14 @@
 {% block title %}Global stats{% endblock %}
 
 {% block content %}
+{% if period_info %}
+	<div>
+		<p>
+			<strong>Selected Period</strong>: from <strong>{{ period_info.start }}</strong>
+			to <strong>{{ period_info.end }}</strong> ({{ period_info.duration }})
+		</p>
+	</div>
+{% endif %}
 <h2>Misc</h2>
 <dl>
 	<dt>Games:</dt><dd>{{ nb_games }}</dd>

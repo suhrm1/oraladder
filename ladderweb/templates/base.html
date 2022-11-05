@@ -5,25 +5,36 @@
 	<meta name="viewport" content="width=device-width" />
 	<link rel="stylesheet" href="{{ url_for('static', filename='Chart.min.css') }}">
 	<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+	<link rel="stylesheet" href="{{ url_for('static', filename='nav.css') }}">
 	<script type="text/javascript" src="{{ url_for('static', filename='Chart.bundle.min.js') }}"></script>
 	<script type="text/javascript" src="{{ url_for('static', filename='jquery.min.js') }}"></script>
 	<script type="text/javascript" src="{{ url_for('static', filename='datatables.min.js') }}"></script>
 	<script type="text/javascript" src="{{ url_for('static', filename='dtfuncs.js') }}"></script>
+	<script type="text/javascript" src="{{ url_for('static', filename='nav.js') }}"></script>
 </head>
 <header>
 	<h1>OpenRA 1v1 Ladder</h1>
 </header>
+ <div class="topnav" id="main_menu">
 {%- for menu_id, pages in navbar_menu.items() %}
-<nav id=menu_{{ menu_id }}>
-	<ul>
+	 {% if menu_id != "pages" %}
+	  <div class="dropdown">
+		<button {% if menu_id == "mods" %}class="dropbtn with_icon" style="background-image:url('static/icon-{{ mod_id }}.png')"{% else %}class="dropbtn"{% endif %}" >&#9660; {% if menu_id=="mods" %}Mod{% else %}Season{% endif %}
+		  <i class="fa fa-caret-down"></i>
+		</button>
+		<div class="dropdown-content">
+	{% endif %}
 		{%- for menu_entry in pages %}
-		<li{% if menu_entry.active %} class=active{% endif %}>
-			<a
-				{%- if menu_entry.icon %} class="with_icon" style="background-image:url('{{ menu_entry.icon }}')"{% endif %}
+			<a class="{% if menu_entry.active %}active{% endif %}{%- if menu_entry.icon %} with_icon{% endif %}"
+				{%- if menu_entry.icon %} style="background-image:url('{{ menu_entry.icon }}')"{% endif %}
 				href="{{ menu_entry.url }}">{{ menu_entry.caption }}</a>
-		</li>
 		{%- endfor %}
-	</ul>
-</nav>
+
+	 {% if menu_id != "pages" %}
+  </div>
+  </div>
+	{% endif %}
 {%- endfor %}
+  <a href="javascript:void(0);" class="icon" onclick="toggle_navbar_menu()">&#9776;</a>
+</div>
 {% block content %}{% endblock %}

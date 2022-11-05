@@ -5,15 +5,108 @@
 {% block content %}
 <h2>{{ player.profile_name }}</h2>
 {%if player.avatar_url %}<img class="avatar" src="{{ player.avatar_url }}" alt="{{ player.profile_name }}">{%endif%}
-<dl>
-	<dt>Rank</dt><dd>#{{ player.rank }}</dd>
-	<dt>Rating</dt><dd>{{ player.rating }}</dd>
-	<dt>Wins</dt><dd>{{ player.wins }}</dd>
-	<dt>Losses</dt><dd>{{ player.losses }}</dd>
-	<dt>Average game duration</dt><dd>{{ player.avg_game_duration }}</dd>
-</dl>
+<p><strong>{{ player.profile_name }}</strong> has played {{ player.wins + player.losses }} games since
+	{{ player.first_game[:10] }}. They have won {{ player.wins }} games during
+	{{ (player.seasons | count)-1 }} seasons to reach their current all-time rank of
+	{{ player.rank }} at {{ player.rating }} points.</p>
+<p>Their games have lasted
+	{{ player.avg_game_duration }} minutes on average. {{ player.profile_name }} has
+	last played a game on ladder servers on {{ player.last_game[:10] }}</p>
 
-<h2>Rating evolution</h2>
+<h3>Alltime statistics</h3>
+<table id="player-alltime-info">
+	<thead>
+	<tr>
+		<th>Games</th>
+		<th>Wins</th>
+		<th>Losses</th>
+		<th>Avg. duration</th>
+		<th>Ladder debut</th>
+		<th>Latest game played</th>
+		<th>Seasons played</th>
+	</tr>
+	</thead>
+	<tbody>
+	<tr>
+		<td>{{ player.wins + player.losses }}</td>
+		<td>{{ player.wins }}</td>
+		<td>{{ player.losses }}</td>
+		<td>{{ player.avg_game_duration }}</td>
+		<td>{{ player.first_game[:10] }}</td>
+		<td>{{ player.last_game[:10] }}</td>
+		<td>{{ (player.seasons | count)-1 }}</td>
+	</tr>
+	</tbody>
+</table>
+<h3>Rankings</h3>
+<table id="player-rankings">
+	<thead>
+	<tr>
+		<th>Season</th>
+		<th>Rank</th>
+		<th>Rating</th>
+		<th>Played</th>
+		<th>Wins</th>
+		<th>Losses</th>
+		<th>Win rate</th>
+		<th>Avg. game duration</th>
+	</tr>
+	</thead>
+	<tbody>
+	{% for season in player.seasons %}
+	<tr {% if season.season.id== season_info.id %}style="font-weight: bold;" {% endif %}>
+		<td {% if season.season.id !='all' %}
+			   title="{{ season.season.duration }} from {{ season.season.start }} until {{ season.season.end }}"
+			   {% endif %}>
+			<a href="{{ url_for('player', profile_id=player.profile_id, period=season.season.id) }}">{{ season.season.title }}</a></td>
+		<td>{% if season.trophy %}{{ season.trophy }}{% else %}{{ season.rank }}{% endif %}</td>
+		<td>{{ season.rating }}</td>
+		<td>{{ season.games }}</td>
+		<td>{{ season.wins }}</td>
+		<td>{{ season.losses }}</td>
+		<td>{{ season.ratio }}</td>
+		<td>{{ season.avg_game_duration }}</td>
+	</tr>
+	{% endfor %}
+	</tbody>
+</table>
+
+<h2>Season statistics: {{ season_info.title }}</h2>
+
+<h3>Latest games</h3>
+<table id="latest-player-games-table">
+	<thead>
+	<tr>
+		<th>Date</th>
+		<th>Opponent</th>
+		<th>Map</th>
+		<th>Outcome</th>
+		<th>Duration</th>
+		<th>Replay</th>
+	</tr>
+	</thead>
+</table>
+<script>
+$(document).ready(
+	function () {
+		$('#latest-player-games-table').DataTable({
+			ajax: { url: "{{ ajax_url|safe }}", dataSrc:"" },
+			columns: [
+				{ data: 'date' },
+				{ data: 'opponent', className: 'player', render: player_render },
+				{ data: 'map', className: 'map' },
+				{ data: 'outcome', render: outcome_render },
+				{ data: 'duration' },
+				{ data: 'replay', render: replay_render },
+			],
+			bSort: false,
+		});
+	}
+);
+
+</script>
+
+<h3>Rating evolution</h3>
 {%if rating_stats.data %}
 <canvas id="rating_chart"></canvas>
 <script>
@@ -36,7 +129,7 @@
 <p>Not enough data points</p>
 {%endif%}
 
-<h2>Preferred factions</h2>
+<h3>Preferred factions</h3>
 <canvas id="faction_chart"></canvas>
 <script>
 	Chart.defaults.global.defaultFontColor = "#e8e8e8";
@@ -66,7 +159,7 @@
 	});
 </script>
 
-<h2>Map performances</h2>
+<h3>Map performances</h3>
 <canvas id="playermaps_chart"></canvas>
 <script>
 	Chart.defaults.global.defaultFontColor = "#e8e8e8";
@@ -88,37 +181,5 @@
 			}]
 		}
 	});
-</script>
-
-<h2>Latest games</h2>
-<table id="latest-player-games-table">
-	<thead>
-		<tr>
-			<th>Date</th>
-			<th>Opponent</th>
-			<th>Map</th>
-			<th>Outcome</th>
-			<th>Duration</th>
-			<th>Replay</th>
-		</tr>
-	</thead>
-</table>
-<script>
-$(document).ready(
-	function () {
-		$('#latest-player-games-table').DataTable({
-			ajax: { url: "{{ ajax_url|safe }}", dataSrc:"" },
-			columns: [
-				{ data: 'date' },
-				{ data: 'opponent', className: 'player', render: player_render },
-				{ data: 'map', className: 'map' },
-				{ data: 'outcome', render: outcome_render },
-				{ data: 'duration' },
-				{ data: 'replay', render: replay_render },
-			],
-			bSort: false,
-		});
-	}
-);
 </script>
 {% endblock %}
