@@ -99,13 +99,12 @@ table tbody td.player_avatar a {
 	text-align: left;
 }
 
-table tbody td.player {
+table tbody td.player,td.map {
 	font-weight: bold;
 	text-align: left;
 }
 
-table tbody td.map {
-	font-weight: bold;
+table tbody td.rating {
 	text-align: left;
 }
 
@@ -116,6 +115,7 @@ img.avatar {
 
 span.diffup   { font-weight: bold; color: #72ff72; }
 span.diffdown { font-weight: bold; color: #ff1a1a; }
+span.diffneutral { display: none; }
 span.diffup::after   { content: '▲'; }
 span.diffdown::after { content: '▼'; }
 span.ghost { color: darkgrey; font-style: italic; }
