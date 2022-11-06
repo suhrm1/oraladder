@@ -24,6 +24,7 @@ import shutil
 import sqlite3
 from collections import UserDict
 from math import ceil
+from yaml import dump
 
 from filelock import FileLock, Timeout
 
@@ -282,14 +283,35 @@ def initialize_periodic_databases():
     For less customized database file creation, refer to the `ora-ladder` CLI tool utilizing "start" and "end"
     parameters.
     """
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="OpenRA Ladder system database helper tool. This CLI provides a wrapper around the `ora-ladder` "
+        "tool that generates SQLite database files from OpenRA game replays located in a source folder. "
+        "'ora-dbtool' allows you to generate multiple database files in batch by defining year and "
+        "starting month. Output files will be structured into 2-months periods according to the usage on "
+        "the https://oraladder.net Ladder website."
+    )
     parser.add_argument("-s", "--schema", default=op.join(op.dirname(__file__), "ladder.sql"))
     parser.add_argument("-r", "--ranking", choices=ranking_systems.keys(), default="trueskill")
     parser.add_argument("--bans-file")
     parser.add_argument("-m", "--mod", default="ra")
     parser.add_argument("-y", "--year", type=int, default=datetime.date.today().year)
     parser.add_argument("--start-month", type=int, default="1", help="Number between 1 and 12")
-    parser.add_argument("-l", "--log-level", default="WARNING")
+    parser.add_argument(
+        "-l", "--log-level", default="WARNING", help="Specify log level (in capital letters), default is WARNING."
+    )
+    parser.add_argument(
+        "--yaml",
+        action="store_true",
+        help="If flag is present, metadata about the generated database files will be dumped in YAML format. "
+        "Default output file is databases.yml in working directory. Set --yaml-file argument to override "
+        "output path.",
+    )
+    parser.add_argument(
+        "--yaml-file",
+        type=str,
+        help="If set, YAML metadata about generated database files is dumped into the specified file. Defaults to "
+        "databases.yml in working directory.",
+    )
     parser.add_argument("replays", nargs="*")
     args = parser.parse_args()
 
@@ -301,6 +323,14 @@ def initialize_periodic_databases():
     start_date = datetime.date(year=args.year, month=start_month, day=1)
     season_counter = ceil(start_month / 2)
     prev_db_name = None
+
+    # Handle YAML metadata output arguments
+    if args.yaml or args.yaml_file is not None:
+        dump_yaml = True
+        yaml_file = "databases.yml" if args.yaml_file is None else args.yaml_file
+        yaml_data = []
+    else:
+        dump_yaml = False
 
     while True:
         # calculate the seasons end date (start + 2 months - 1 day)
@@ -337,6 +367,19 @@ def initialize_periodic_databases():
                     f"start date {start_date}, end date {end_date}, source "
                     f"folder {args.replays}."
                 )
+                if dump_yaml:
+                    # collect database metadata for YAML output
+                    yaml_data.append(
+                        dict(
+                            id=f"{start_date.year}-{season_counter}",
+                            mod=args.mod,
+                            title=f"{start_date.year}-{season_counter}",
+                            database_file=db_name,
+                            start=start_date,
+                            end=end_date,
+                        )
+                    )
+
         except Timeout:
             logging.error("Another instance of this application currently holds the %s lock file.", lockfile)
 
@@ -347,3 +390,10 @@ def initialize_periodic_databases():
         # stop the loop if we completed a year or if the start date is in the future
         if start_date.month == 1 or start_date > datetime.date.today():
             break
+
+    if dump_yaml:
+        # Write YAML metadata to file
+        logging.info(f"Dumping database YAML information into {yaml_file}")
+        with open(yaml_file, "w") as f:
+            dump(yaml_data, stream=f)
+        logging.debug(f"YAML database information:\n{dump(yaml_data)}")

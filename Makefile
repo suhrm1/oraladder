@@ -20,6 +20,8 @@ LADDER_DATABASES = instance/db-ra-all.sqlite3 \
                    instance/db-td-all.sqlite3 \
                    instance/db-td-2m.sqlite3  \
 
+LADDER_DB_YAML = instance/seasons.yml
+
 # https://github.com/chartjs/Chart.js/releases/latest
 CHART_JS_VERSION = 2.9.3
 
@@ -32,7 +34,7 @@ DATATABLES_VERSION = 1.10.24
 ladderdev: initladderdev
 	FLASK_APP=ladderweb FLASK_DEBUG=True FLASK_RUN_PORT=5000 $(VENV)/bin/flask run
 
-initladderdev: $(VENV) $(LADDER_STATIC) $(LADDER_DATABASES)
+initladderdev: $(VENV) $(LADDER_STATIC) $(LADDER_DATABASES) $(LADDER_DB_YAML)
 
 ladderweb/static/Chart.min.css:
 	$(CURL) -L https://cdnjs.cloudflare.com/ajax/libs/Chart.js/$(CHART_JS_VERSION)/Chart.min.css -o $@
@@ -48,6 +50,9 @@ ladderweb/static/jquery.min.js:
 
 $(LADDER_DATABASES): instance
 	([ -f $@ ] ||  $(VENV)/bin/ora-ladder -d $@)
+
+instance/seasons.yml: ladderweb/seasons.yml instance
+	([ -f $@ ] ||  cp $< $@)
 
 ragldev: initragldev
 	FLASK_APP=raglweb FLASK_DEBUG=True FLASK_RUN_PORT=5001 RAGLWEB_DATABASE="db-ragl.sqlite3" $(VENV)/bin/flask run

@@ -54,7 +54,7 @@
 	</thead>
 	<tbody>
 	{% for season in player.seasons %}
-	<tr {% if season.season.id== season_info.id %}style="font-weight: bold;" {% endif %}>
+	<tr {% if season.season.id == season_info.id %}style="font-weight: bold;" {% endif %}>
 		<td {% if season.season.id !='all' %}
 			   title="{{ season.season.duration }} from {{ season.season.start }} until {{ season.season.end }}"
 			   {% endif %}>

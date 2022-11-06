@@ -20,6 +20,7 @@ RUN . venv/bin/activate && pip install gunicorn && pip install -e .
 RUN mkdir instance \
     && for DB in "ra-all" "ra-2m" "td-all" "td-2m";  \
         do venv/bin/ora-ladder -d "instance/db-${DB}.sqlite3";  \
-        done;
+        done \
+    && mv -v ladderweb/seasons.yml instance/
 
 CMD ["venv/bin/gunicorn", "-b", "0.0.0.0:8000", "ladderweb:app"]

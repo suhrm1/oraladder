@@ -17,107 +17,76 @@
 
 import calendar
 import datetime
+import logging
+import os.path
 from math import ceil
+from typing import Optional
 
-seasons_default = {
-    "ra": {"all": "db-ra-all.sqlite3", "2m": "db-ra-2m.sqlite3"},
-    "td": {
-        "all": "db-td-all.sqlite3",
-        "2m": "db-td-2m.sqlite3",
-    },
-}
+import yaml
+from pydantic import BaseModel, ValidationError
 
 
-def fill_yearly_seasons(seasons_dict=None, start_year: int = datetime.date.today().year, start_month: int = 1) -> dict:
-    """Generate additional season entries based on 2-month periods
+class Season(BaseModel):
+    id: str
+    mod: str
+    title: str
+    database_file: str
+    description: Optional[str]
+    start: Optional[datetime.date]
+    end: Optional[datetime.date]
+    duration: Optional[str]
 
-    Returns a populated dictionary with mod-ID keys (ra, td) at the top level and
-    season identifiers as sub keys in descending order latest to earliest
-    (e.g. 2022-6, 2022-5, ...); value of the season identifier key is always the
-    expected SQLite database file name.
+    def get_info(self) -> dict:
+        if self.id == "2m" and self.start is None:
+            # Calculate start and end dates of the current 2-month season
+            today = datetime.date.today()
+            start_date = datetime.date(year=today.year, month=today.month, day=1)
+            if start_date.month % 2 == 0:
+                start_date = start_date.replace(month=start_date.month - 1)
+            _, end_day = calendar.monthrange(year=start_date.year, month=start_date.month + 1)
+            end_date = datetime.date(year=today.year, month=start_date.month + 1, day=end_day)
+            self.start = start_date
+            self.end = end_date
 
-    Current period will always be identified as "2m".
-
-    Database files have to be generated separately at the moment.
-
-    Example:
-
-    {
-        "ra": {
-            "all": "db-ra-all.sqlite3",
-            "2m": "db-ra-2m.sqlite3",
-            "2022-2": "db-ra-2022-2.sqlite3",
-            "2022-1": "db-ra-2022-1.sqlite3",
-            "2021-6": "db-ra-2021-6.sqlite3",
-        },
-        "td": {
-            "all": "db-td-all.sqlite3",
-            "2m": "db-td-2m.sqlite3",
-            "2022-2": "db-td-2022-2.sqlite3",
-            "2022-1": "db-td-2022-1.sqlite3",
-            "2021-6": "db-td-2021-6.sqlite3",
-        }
-    }
-
-    """
-    if seasons_dict is None:
-        seasons_dict = seasons_default
-
-    # initialize variables
-    today = datetime.date.today()
-    current_month, current_year = today.month, today.year
-    season_number = ceil(start_month / 2)
-    season_year = start_year
-    seasons = []
-
-    while True:
-        seasons.append((season_year, season_number))
-        season_number += 1
-        # omit the currently running season
-        if season_year == current_year and season_number * 2 >= current_month:
-            break
-        # increase year if we reach the 7th 2-month period
-        if season_number == 7:
-            season_year += 1
-            season_number = 1
-
-    # sort the seasons in descending chronological order, latest to earliest
-    seasons.reverse()
-
-    # put together the dictionary
-    for year, season_number in seasons:
-        for mod in ["ra", "td"]:
-            season_name = f"{year}-{season_number}"
-            db_file = f"db-{mod}-{year}-{season_number}.sqlite3"
-            seasons_dict[mod][season_name] = db_file
-
-    return seasons_dict
+        return dict(
+            title=self.title,
+            id=self.id,
+            start=self.start,
+            end=self.end,
+            duration=self.duration,
+        )
 
 
-def get_season_info(season_string: str):
-    """Returns display information based on a season-ID string
+def load_yaml_season_config_from_directory(directory: str) -> {str: {str: Season}}:
+    logging.debug(f"Loading season configuration from YAML files in {directory}")
 
-    Input may be '2m' for the current season or any valid combination
-    of year/season-number e.g. '2022-1', '2021-5', ...
+    if not os.path.isdir(directory):
+        logging.error(f"Not a directory")
+        return None
 
-    Returns a dictionary containing start and end dates as datetime.date objects and
-    a human-readable string explaining the duration
-    """
-    if season_string in ["all", "2m"]:
-        today = datetime.date.today()
-        year, season_number = today.year, ceil(today.month / 2)
-        title = "All time" if season_string == "all" else "Current season"
-    else:
-        year, season_number = season_string.split("-")
-        title = season_string
-    year = int(year)
-    end_month = int(season_number) * 2
-    start_month = end_month - 1
-    _, end_day = calendar.monthrange(year, end_month)
-    return dict(
-        title=title,
-        id=season_string,
-        start=datetime.date(year, start_month, 1),
-        end=datetime.date(year, end_month, end_day),
-        duration="2 months",
-    )
+    # initialize with default database keys and None values to impose static order
+    seasons = {"ra": {"all": None, "2m": None}, "td": {"all": None, "2m": None}}
+
+    for base_path, _, files in os.walk(directory):
+        for filename in files:
+            if os.path.splitext(filename)[1] in [".yml", ".yaml"]:
+                logging.debug(f"Loading season configuration from {filename}")
+                with open(os.path.join(base_path, filename), "r") as f:
+                    yaml_content = yaml.safe_load(f.read())
+                    # content should be a list of objects/dictionaries
+                    if type(yaml_content) is list:
+                        for item in yaml_content:
+                            try:
+                                season = Season(**item)
+                                if season.mod in seasons.keys():
+                                    seasons[season.mod][season.id] = season
+                                else:
+                                    seasons[season.mod] = {season.id: season}
+                            except (ValidationError, TypeError) as e:
+                                logging.warning(
+                                    f'Could not parse "{item}" into Season object.',
+                                    exc_info=False,
+                                )
+
+    logging.debug(f"Collected season configuration: {seasons}")
+    return seasons

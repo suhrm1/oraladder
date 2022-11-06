@@ -13,6 +13,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 ### Security
 
+## [2.1.0] - tbd.
+
+### Added
+- 'ora-dbtool': Added CLI arguments to auto-generate YAML metadata files for the databases created (see YAML-based season processing introduced for `ladderweb`)
+### Changed
+- 'ladderweb': handling of multiple seasons derives from a YAML config file. See the [example file](./ladderweb/seasons.yml) for the required syntax.
+### Deprecated
+### Removed
+### Fixed
+### Security
+
 ## [2.0.2] - 2022-11-20
 
 ### Added
