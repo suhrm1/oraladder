@@ -36,9 +36,8 @@ from flask import (
     url_for,
 )
 
-from ladderweb.seasons import fill_yearly_seasons, get_season_info
+from ladderweb.seasons import load_yaml_season_config_from_directory, Season
 from .mods import mods
-
 
 # XXX: store in a file probably
 _cfg = dict(
@@ -66,12 +65,15 @@ def _get_request_params() -> Tuple[str, str, str]:
 def _filter_available_databases(seasons_dict: dict):
     """Filters out all seasons/periods from the dictionary for which no database exists
 
-    Input dictionary should be created using seasons.fill_yearly_seasons method.
+    Input dictionary should be loaded using seasons.load_yaml_season_config_from_directory method.
     """
     to_delete = []
-    for mod, seasons in seasons_dict.items():
-        for season_name, db_filename in seasons.items():
-            file = op.join(app.instance_path, db_filename)
+    for mod, _seasons in seasons_dict.items():
+        for season_name, season in _seasons.items():
+            if season is None:
+                to_delete.append((mod, season_name))
+                continue
+            file = op.join(app.instance_path, season.database_file)
             if not op.exists(file):
                 to_delete.append((mod, season_name))
     for mod, season_name in to_delete:
@@ -88,7 +90,8 @@ def _db_get(db_filename: Optional[str] = None) -> Connection:
         return conn
     elif "db" not in g:
         _, mod, period = _get_request_params()
-        dbname = app.config.get("LADDER_SEASONS")[mod][period]
+        _season: Season = app.config.get("LADDER_SEASONS")[mod][period]
+        dbname = _season.database_file
         db = op.join(app.instance_path, dbname)
         app.logger.debug(f"Opening database file {db}")
         g.db = sqlite3.connect(db, detect_types=sqlite3.PARSE_DECLTYPES)
@@ -110,12 +113,7 @@ def create_app():
 
 app = create_app()
 app.config.from_prefixed_env()
-app.config["LADDER_SEASONS"] = _filter_available_databases(
-    fill_yearly_seasons(
-        start_year=app.config.get("LADDER_SEASONS_START_YEAR", date.today().year),
-        start_month=app.config.get("LADDER_SEASONS_START_MONTH", 1),
-    )
-)
+app.config["LADDER_SEASONS"] = _filter_available_databases(load_yaml_season_config_from_directory(app.instance_path))
 app.config["ALLOWED_MODS"] = list(app.config["LADDER_SEASONS"].keys())
 app.logger.debug(f"Loaded available mods and seasons: {app.config['LADDER_SEASONS']}")
 
@@ -180,16 +178,10 @@ def _get_menu(**args):
 
     period_pages = {"leaderboard", "latest_games", "player", "globalstats"}
 
-    periods = app.config["LADDER_SEASONS"][cur_mod]
+    periods: dict[Season] = app.config["LADDER_SEASONS"][cur_mod]
     period_options = []
-    for period in periods.keys():
-        if period == "2m":
-            caption = "Current season"
-        elif period == "all":
-            caption = "All time"
-        else:
-            caption = period
-        period_options.append((caption, period))
+    for period in periods.values():
+        period_options.append((period.title, period.id))
 
     if cur_endpoint in period_pages:
         ret["period"] = [
@@ -209,11 +201,13 @@ def leaderboard():
     menu = _get_menu()
     ajax_url = url_for("leaderboard_js") + _args_url()
     _, cur_mod, cur_period = _get_request_params()
+    season: Season = app.config["LADDER_SEASONS"][cur_mod][cur_period]
+    print(f"Season: {season}")
     return render_template(
         "leaderboard.html",
         navbar_menu=menu,
         ajax_url=ajax_url,
-        period_info=get_season_info(cur_period) if cur_period != "all" else None,
+        period_info=season.get_info() if cur_period != "all" else None,
         mod_id=cur_mod,
     )
 
@@ -264,10 +258,11 @@ def leaderboard_js():
 @app.route("/latest")
 def latest_games():
     _, cur_mod, cur_period = _get_request_params()
+    season = app.config["LADDER_SEASONS"][cur_mod][cur_period]
     menu = _get_menu()
     ajax_url = url_for("latest_games_js") + _args_url()
     return render_template(
-        "latest.html", navbar_menu=menu, ajax_url=ajax_url, period_info=get_season_info(cur_period), mod_id=cur_mod
+        "latest.html", navbar_menu=menu, ajax_url=ajax_url, period_info=season.get_info(), mod_id=cur_mod
     )
 
 
@@ -390,10 +385,10 @@ def _get_player_ratings(db, profile_id):
 
 
 def _get_player_season_history(mod, profile_id):
-    seasons = app.config["LADDER_SEASONS"][mod]
+    _seasons: dict[Season] = app.config["LADDER_SEASONS"][mod]
     player_season_history = []
-    for season_name, db_filename in seasons.items():
-        db_file = op.join(app.instance_path, db_filename)
+    for season_name, season in _seasons.items():
+        db_file = op.join(app.instance_path, season.database_file)
         with _db_get(db_file) as db:
             row = db.execute(
                 f"""select rating, wins, losses, (wins+losses) as games,
@@ -416,9 +411,10 @@ def _get_player_season_history(mod, profile_id):
                 if rank < 3:
                     stats["trophy"] = ["🥇", "🥈", "🥉"][rank]
                 stats["ratio"] = "{:.2f}%".format(stats["wins"] / stats["games"] * 100)
-                stats["season"] = get_season_info(season_name)
+                stats["season"] = season.get_info()
 
                 player_season_history.append(stats)
+
     return player_season_history
 
 
@@ -585,8 +581,9 @@ def player_games_js(profile_id):
 def player(profile_id):
     db = _db_get()
     _, cur_mod, cur_period = _get_request_params()
-    alltime_db_name = app.config["LADDER_SEASONS"][cur_mod]["all"]
-    alltime_db = _db_get(alltime_db_name)
+    alltime: Season = app.config["LADDER_SEASONS"][cur_mod]["all"]
+    alltime_db = _db_get(alltime.database_file)
+    current: Season = app.config["LADDER_SEASONS"][cur_mod][cur_period]
     menu = _get_menu(profile_id=profile_id)
 
     # load current period database first to see if player was active during this
@@ -610,7 +607,7 @@ def player(profile_id):
         faction_stats=_get_player_faction_stats(db, profile_id),
         map_stats=_get_player_map_stats(db, profile_id),
         mod_id=cur_mod,
-        season_info=get_season_info(cur_period),
+        season_info=current.get_info(),
     )
 
 
@@ -717,6 +714,7 @@ def globalstats():
 
     menu = _get_menu()
     _, cur_mod, cur_period = _get_request_params()
+    season = app.config["LADDER_SEASONS"][cur_mod][cur_period]
     return render_template(
         "globalstats.html",
         navbar_menu=menu,
@@ -726,7 +724,7 @@ def globalstats():
         nb_games=nb_games,
         nb_players=nb_players,
         avg_duration=avg_duration,
-        period_info=get_season_info(cur_period) if cur_period != "all" else None,
+        period_info=season.get_info() if cur_period != "all" else None,
         mod_id=cur_mod,
     )
 
@@ -736,8 +734,13 @@ def globalstats():
 def info():
     menu = _get_menu()
     _, cur_mod, cur_period = _get_request_params()
+    season = app.config["LADDER_SEASONS"][cur_mod]["2m"]
     return render_template(
-        "info.html", navbar_menu=menu, period_info=get_season_info("2m"), mod=mods[cur_mod], mod_id=cur_mod
+        "info.html",
+        navbar_menu=menu,
+        period_info=season.get_info(),
+        mod=mods[cur_mod],
+        mod_id=cur_mod,
     )
 
 
