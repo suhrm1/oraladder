@@ -67,7 +67,6 @@ class _RatingGlicko:
 
 
 class RankingGlicko(RankingBase):
-
     @staticmethod
     def compute_new_rating(
         rating,
@@ -95,7 +94,7 @@ class RankingGlicko(RankingBase):
         """
 
         def g(rating):
-            return 1 / sqrt(1 + (3 * rating.phi ** 2) / (pi ** 2))
+            return 1 / sqrt(1 + (3 * rating.phi**2) / (pi**2))
 
         def E(rating, other):
             return 1 / (1 + exp(-g(other) * (rating.mu - other.mu)))
@@ -124,19 +123,19 @@ class RankingGlicko(RankingBase):
         delta = v * delta
 
         # step 5 -- determine the new value of std
-        a = log(rating.std ** 2)
+        a = log(rating.std**2)
 
         def f(x):
             # f(x) = n1/d1 - n2/d2
-            n1 = exp(x) * (delta ** 2 - rating.phi ** 2 - v - exp(x))
-            d1 = 2 * (rating.phi ** 2 + v + exp(x)) ** 2
+            n1 = exp(x) * (delta**2 - rating.phi**2 - v - exp(x))
+            d1 = 2 * (rating.phi**2 + v + exp(x)) ** 2
             n2 = x - a
-            d2 = tau ** 2
+            d2 = tau**2
             return n1 / d1 - n2 / d2
 
         A = a
-        if delta ** 2 > rating.phi ** 2 + v:
-            B = log(delta ** 2 - rating.phi ** 2 - v)
+        if delta**2 > rating.phi**2 + v:
+            B = log(delta**2 - rating.phi**2 - v)
         else:
             for k in count(1):
                 if (a - k * tau) < 0:
@@ -155,12 +154,12 @@ class RankingGlicko(RankingBase):
         new_std = exp(A / 2)
 
         # step 6, 7, 8 -- update ratings
-        phi_star = sqrt(rating.phi ** 2 + rating.std ** 2)
+        phi_star = sqrt(rating.phi**2 + rating.std**2)
 
-        new_phi = 1 / (phi_star ** 2) + 1 / v
+        new_phi = 1 / (phi_star**2) + 1 / v
         new_phi = 1 / sqrt(new_phi)
 
-        new_mu = rating.mu + new_phi ** 2 * delta / v
+        new_mu = rating.mu + new_phi**2 * delta / v
 
         new_r = _RatingGlicko.mu_to_rating(new_mu)
         new_RD = _RatingGlicko.phi_to_RD(new_phi)
@@ -262,9 +261,7 @@ class RankingGlicko(RankingBase):
         start_date = min(map(lambda g: g.end_time, games))
         start_date = start_date.replace(hour=0, minute=0, second=0)
 
-        games_by_period = _partition_games_in_rating_periods(
-            games, start_date, rating_period
-        )
+        games_by_period = _partition_games_in_rating_periods(games, start_date, rating_period)
         current_registered_players = set()
 
         for period, G in games_by_period.items():
@@ -276,9 +273,7 @@ class RankingGlicko(RankingBase):
                 G_ = groups.get(player, [])
                 outcomes = [_get_outcome_for(g, player) for g in G_]
                 opponents = [_get_opponent(g, player) for g in G_]
-                opponent_ratings = [
-                    _previous_period_rating_for(o, period) for o in opponents
-                ]
+                opponent_ratings = [_previous_period_rating_for(o, period) for o in opponents]
                 current_rating = _previous_period_rating_for(player, period)
                 period - rating_period
                 new_rating, tmp = RankingGlicko.compute_new_rating(

@@ -19,7 +19,6 @@ from abc import ABC, abstractmethod
 
 
 class RankingBase(ABC):
-
     def compute_ratings_from_series_of_games(self, games, player_lookup):
         player_ratings = {}
         game_ratings = []

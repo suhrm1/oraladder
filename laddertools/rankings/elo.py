@@ -19,7 +19,6 @@ from .abc import RankingBase
 
 
 class _RatingELO:
-
     def __init__(self, value):
         self.value = value
 

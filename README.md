@@ -44,7 +44,7 @@ cp db-ra-all.sqlite3 db-ra-2m.sqlite3 instance/
 
 ### Docker
 
-The web services can be run in Docker containers. Please refer to the 
+The web services can be run in Docker containers. Please refer to the
 [Docker instructions](.docker/README.md) for more information.
 
 ## Architecture

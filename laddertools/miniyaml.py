@@ -18,12 +18,12 @@
 import re
 
 
-_LINE_RE = re.compile(r'^(?P<indent>\t*)(?:(?P<key>[^:]*):\s*)?(?P<value>.*)')
+_LINE_RE = re.compile(r"^(?P<indent>\t*)(?:(?P<key>[^:]*):\s*)?(?P<value>.*)")
 
 
 def _cleanup(d):
     if d == {}:
-        return ''
+        return ""
     for k, v in d.items():
         if not isinstance(v, dict):
             continue
@@ -36,13 +36,13 @@ def load(yaml_str):
     levels = [{}]
     for line in yaml_str.splitlines():
         m = re.match(_LINE_RE, line)
-        indent, key, value = m.group('indent', 'key', 'value')
+        indent, key, value = m.group("indent", "key", "value")
         level = len(indent)
         if not key:
             continue
         if not value:
             value = {}
-            levels = levels[:level + 1] + [value]
+            levels = levels[: level + 1] + [value]
         parent = levels[level]
         parent[key] = value
     return _cleanup(levels[0])

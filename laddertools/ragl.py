@@ -15,7 +15,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-import os
 import os.path as op
 import hashlib
 import logging
@@ -28,14 +27,13 @@ from .utils import get_results
 
 
 class _Player:
-
     def __init__(self, profile_id, name, avatar_url, extra_info):
         self.profile_id = profile_id
         self.name = name
         self.avatar_url = avatar_url
         self.wins = 0
         self.losses = 0
-        self.division = self._get_player_division(extra_info['Divisions'], profile_id)
+        self.division = self._get_player_division(extra_info["Divisions"], profile_id)
         self.status = self._get_player_status(extra_info, profile_id)
 
     @staticmethod
@@ -48,7 +46,7 @@ class _Player:
 
     @staticmethod
     def _get_player_status(extra_info, profile_id):
-        return 'SF' if profile_id in extra_info.get('Forfeit', []) else None
+        return "SF" if profile_id in extra_info.get("Forfeit", []) else None
 
     @property
     def sql_row(self):
@@ -64,7 +62,6 @@ class _Player:
 
 
 class _OutCome:
-
     def __init__(self, result, p0, p1):
         self._hash = hashlib.sha256(result.filename.encode()).hexdigest()
         self._filename = result.filename
@@ -81,7 +78,7 @@ class _OutCome:
 
     @staticmethod
     def _sql_date_fmt(dt):
-        return dt.strftime('%Y-%m-%d %H:%M:%S')
+        return dt.strftime("%Y-%m-%d %H:%M:%S")
 
     @property
     def profile_pair(self):
@@ -117,9 +114,9 @@ def _get_players_outcomes(accounts_db, results, players_info):
 
     # XXX: currently no sane way of querying profile names from profile IDs, so
     # there are hardcoded in the info file
-    for division, players in players_info['Divisions'].items():
+    for division, players in players_info["Divisions"].items():
         for profile_id, profile_name in players:
-            profile2player[profile_id] = _Player(profile_id, profile_name, '', players_info)
+            profile2player[profile_id] = _Player(profile_id, profile_name, "", players_info)
 
     for result in results:
         acc0 = accounts_db.get(result.player0.fingerprint)
@@ -165,17 +162,17 @@ def _handle_extra_outcomes(c, outcomes, playoffs):
     playoffs_sql = []
 
     for label, playoff_data in playoffs.items():
-        bestof = playoff_data['bestof']
-        players = playoff_data['players']
+        bestof = playoff_data["bestof"]
+        players = playoff_data["players"]
         assert len(players) in (2, 4)
 
         players_sql = [(label, player_id) for player_id in players]
-        c.executemany('INSERT OR IGNORE INTO playoff_playersets VALUES (?,?)', players_sql)
+        c.executemany("INSERT OR IGNORE INTO playoff_playersets VALUES (?,?)", players_sql)
 
         playoffs_sql.append((label, bestof))
 
-    c.executemany('INSERT OR IGNORE INTO playoffs VALUES (?,?)', playoffs_sql)
-    c.executemany('INSERT OR IGNORE INTO playoff_outcomes VALUES (?,?,?,?,?,?,?,?,?,?,?,?)', playoff_outcomes_sql)
+    c.executemany("INSERT OR IGNORE INTO playoffs VALUES (?,?)", playoffs_sql)
+    c.executemany("INSERT OR IGNORE INTO playoff_outcomes VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", playoff_outcomes_sql)
 
 
 def _main(args):
@@ -185,20 +182,20 @@ def _main(args):
 
     # We don't know if the new submitted replays will be properly ordered, so
     # all the information needs to be reconstructed
-    c.execute('DROP TABLE IF EXISTS players')
-    c.execute('DROP TABLE IF EXISTS outcomes')
+    c.execute("DROP TABLE IF EXISTS players")
+    c.execute("DROP TABLE IF EXISTS outcomes")
 
-    c.execute('DROP TABLE IF EXISTS playoff_outcomes')
-    c.execute('DROP TABLE IF EXISTS playoff_playersets')
-    c.execute('DROP TABLE IF EXISTS playoffs')
-    c.execute('DROP TABLE IF EXISTS forfeit_games')
+    c.execute("DROP TABLE IF EXISTS playoff_outcomes")
+    c.execute("DROP TABLE IF EXISTS playoff_playersets")
+    c.execute("DROP TABLE IF EXISTS playoffs")
+    c.execute("DROP TABLE IF EXISTS forfeit_games")
 
     with open(args.schema) as f:
         c.executescript(f.read())
 
     # Re-use the cached OpenRA account information to prevent stressing too
     # much the service
-    request_accounts = c.execute('SELECT * FROM accounts')
+    request_accounts = c.execute("SELECT * FROM accounts")
     accounts_db = {fp: (pid, pname, avatar_url) for fp, pid, pname, avatar_url in request_accounts.fetchall()}
 
     results = get_results(accounts_db, args.replays)
@@ -211,34 +208,34 @@ def _main(args):
     players_sql = [p.sql_row for p in players]
     accounts_sql = [(fp, acc[0], acc[1], acc[2]) for fp, acc in accounts_db.items() if acc is not None]
 
-    c.executemany('INSERT OR IGNORE INTO accounts VALUES (?,?,?,?)', accounts_sql)
-    c.executemany('INSERT OR IGNORE INTO players VALUES (?,?,?,?,?,?,?)', players_sql)
-    c.executemany('INSERT OR IGNORE INTO outcomes VALUES (?,?,?,?,?,?,?,?,?,?,?,?)', outcomes_sql)
+    c.executemany("INSERT OR IGNORE INTO accounts VALUES (?,?,?,?)", accounts_sql)
+    c.executemany("INSERT OR IGNORE INTO players VALUES (?,?,?,?,?,?,?)", players_sql)
+    c.executemany("INSERT OR IGNORE INTO outcomes VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", outcomes_sql)
 
-    playoffs = players_info.get('Playoffs')
+    playoffs = players_info.get("Playoffs")
     if playoffs:
         _handle_extra_outcomes(c, extra_outcomes, playoffs)
 
-    if 'Forfeit_Games' in players_info.keys():
-        c.executemany('INSERT OR IGNORE INTO forfeit_games VALUES (?,?,?,?)', players_info['Forfeit_Games'])
+    if "Forfeit_Games" in players_info.keys():
+        c.executemany("INSERT OR IGNORE INTO forfeit_games VALUES (?,?,?,?)", players_info["Forfeit_Games"])
 
     conn.commit()
     conn.close()
 
 
 def run():
-    logging.basicConfig(level='INFO')
+    logging.basicConfig(level="INFO")
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', '--database', default='db-ragl.sqlite3')
-    parser.add_argument('-s', '--schema', default=op.join(op.dirname(__file__), 'ragl.sql'))
-    parser.add_argument('-p', '--playersinfo', default=op.join(op.dirname(__file__), 'ragl-s12.yml'))
-    parser.add_argument('replays', nargs='*')
+    parser.add_argument("-d", "--database", default="db-ragl.sqlite3")
+    parser.add_argument("-s", "--schema", default=op.join(op.dirname(__file__), "ragl.sql"))
+    parser.add_argument("-p", "--playersinfo", default=op.join(op.dirname(__file__), "ragl-s12.yml"))
+    parser.add_argument("replays", nargs="*")
     args = parser.parse_args()
 
-    lockfile = args.database + '.lock'
+    lockfile = args.database + ".lock"
     lock = FileLock(lockfile, timeout=1)
     try:
         with lock:
             _main(args)
     except Timeout:
-        logging.error('Another instance of this application currently holds the %s lock file.', lockfile)
+        logging.error("Another instance of this application currently holds the %s lock file.", lockfile)

@@ -133,15 +133,15 @@ ATEK:
 		Condition: gpsactivated
 
 powergps:
-	Interactable: 
+	Interactable:
 	EditorOnlyTooltip:
 		Name: (reveals area to owner)
-	AlwaysVisible: 
+	AlwaysVisible:
 	Immobile:
 		OccupiesSpace: false
 	BodyOrientation:
 		QuantizedFacings: 1
-	WithSpriteBody: 
+	WithSpriteBody:
 	RenderSpritesEditorOnly:
 		Image: camera
 	MapEditorData:
