@@ -13,6 +13,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 ### Security
 
+## [2.0.2] - 2022-11-20
+
+### Added
+- Added configuration files for development process tools `pre-commit` and `black`:
+  - [`.pre-commit-config.yaml`](./.pre-commit-config.yaml) for [Pre-Commit](https://pre-commit.com/)
+  - [`pyproject.toml`](./pyproject.toml) for [Black](https://black.readthedocs.io/en/stable/)
+- Added `requirements.txt` file to pin Python module versions.
+
+### Changed
+- Re-formatted all source files using `black`
+
 ## [2.0.1] - 2022-11-10
 
 ### Added
