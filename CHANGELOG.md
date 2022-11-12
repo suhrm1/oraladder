@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 ### Security
 
+## [2.0.1] - 2022-11-10
+
+### Added
+- [Dockerfile](.docker/ladder_server/Dockerfile) for running OpenRA game servers; building on the base image by [rmoriz](https://github.com/rmoriz/openra-dockerfile) . This adds environment variable handling as well as a custom launch script for the game server that rotates starting maps.
+
 ## [2.0.0] - 2022-10-30
 
 ### Added
