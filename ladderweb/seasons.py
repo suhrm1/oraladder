@@ -20,20 +20,15 @@ import datetime
 from math import ceil
 
 seasons_default = {
-    "ra": {
-        "all": "db-ra-all.sqlite3",
-        "2m": "db-ra-2m.sqlite3"
-    },
+    "ra": {"all": "db-ra-all.sqlite3", "2m": "db-ra-2m.sqlite3"},
     "td": {
         "all": "db-td-all.sqlite3",
         "2m": "db-td-2m.sqlite3",
-    }
+    },
 }
 
 
-def fill_yearly_seasons(seasons_dict=None,
-                        start_year: int = datetime.date.today().year,
-                        start_month: int = 1) -> dict:
+def fill_yearly_seasons(seasons_dict=None, start_year: int = datetime.date.today().year, start_month: int = 1) -> dict:
     """Generate additional season entries based on 2-month periods
 
     Returns a populated dictionary with mod-ID keys (ra, td) at the top level and
@@ -79,8 +74,7 @@ def fill_yearly_seasons(seasons_dict=None,
         seasons.append((season_year, season_number))
         season_number += 1
         # omit the currently running season
-        if season_year == current_year \
-                and season_number * 2 >= current_month:
+        if season_year == current_year and season_number * 2 >= current_month:
             break
         # increase year if we reach the 7th 2-month period
         if season_number == 7:
@@ -112,7 +106,7 @@ def get_season_info(season_string: str):
     if season_string in ["all", "2m"]:
         today = datetime.date.today()
         year, season_number = today.year, ceil(today.month / 2)
-        title = 'All time' if season_string == 'all' else 'Current season'
+        title = "All time" if season_string == "all" else "Current season"
     else:
         year, season_number = season_string.split("-")
         title = season_string
@@ -125,5 +119,5 @@ def get_season_info(season_string: str):
         id=season_string,
         start=datetime.date(year, start_month, 1),
         end=datetime.date(year, end_month, end_day),
-        duration='2 months',
+        duration="2 months",
     )

@@ -30,7 +30,7 @@ JQUERY_VERSION = 3.6.0
 DATATABLES_VERSION = 1.10.24
 
 ladderdev: initladderdev
-	FLASK_APP=ladderweb FLASK_ENV=development FLASK_RUN_PORT=5000 $(VENV)/bin/flask run
+	FLASK_APP=ladderweb FLASK_DEBUG=True FLASK_RUN_PORT=5000 $(VENV)/bin/flask run
 
 initladderdev: $(VENV) $(LADDER_STATIC) $(LADDER_DATABASES)
 
@@ -50,10 +50,10 @@ $(LADDER_DATABASES): instance
 	([ -f $@ ] ||  $(VENV)/bin/ora-ladder -d $@)
 
 ragldev: initragldev
-	FLASK_APP=raglweb FLASK_ENV=development FLASK_RUN_PORT=5001 RAGLWEB_DATABASE="db-ragl.sqlite3" $(VENV)/bin/flask run
+	FLASK_APP=raglweb FLASK_DEBUG=True FLASK_RUN_PORT=5001 RAGLWEB_DATABASE="db-ragl.sqlite3" $(VENV)/bin/flask run
 
 tdgldev: inittdgldev
-	FLASK_APP=raglweb FLASK_ENV=development FLASK_RUN_PORT=5001 RAGLWEB_DATABASE="db-tdgl.sqlite3" RAGL_CONFIG=../instance/tdgl_config.py $(VENV)/bin/flask run
+	FLASK_APP=raglweb FLASK_DEBUG=True FLASK_RUN_PORT=5001 RAGLWEB_DATABASE="db-tdgl.sqlite3" RAGL_CONFIG=../instance/tdgl_config.py $(VENV)/bin/flask run
 
 initragldev: $(VENV) $(RAGL_MAP_PACK) instance/db-ragl.sqlite3 instance/ragl_config.py
 

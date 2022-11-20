@@ -129,8 +129,8 @@ def patch():
 
 def apply_bans(source_file: str):
     with open(source_file) as bans_file:
-        _banned_profile_re = re.compile(r'^\d+')
+        _banned_profile_re = re.compile(r"^\d+")
         profile_ids = [int(_banned_profile_re.search(line).group()) for line in bans_file]
-    ban_str = ','.join(str(profile_id) for profile_id in profile_ids)
+    ban_str = ",".join(str(profile_id) for profile_id in profile_ids)
     os.environ["ProfileIDBlacklist"] = ban_str
     print(ban_str)

@@ -8,8 +8,8 @@ These instructions expect you to know the basics of Docker and the Docker CLI.
 
 ### Build
 
-First, you have to build the Docker images. To streamline this process, a shell script 
-is packaged with this repository. Run the shell script from the repository root 
+First, you have to build the Docker images. To streamline this process, a shell script
+is packaged with this repository. Run the shell script from the repository root
 directory:
 
 ```sh
@@ -25,8 +25,8 @@ The script builds three Docker images:
 
 ### Run
 
-Export the path to your replay directory into the environment variable 
-`REPLAY_DIRECTORY`. Then run the RAGL or Ladder web service with the following 
+Export the path to your replay directory into the environment variable
+`REPLAY_DIRECTORY`. Then run the RAGL or Ladder web service with the following
 commands:
 
 ```sh
@@ -41,7 +41,7 @@ NB: These containers will be removed entirely when stopped due to the `--rm` fla
 
 ### Update database
 
-To update the database files, you can use `docker exec` as follows for the 
+To update the database files, you can use `docker exec` as follows for the
 `ladder` container:
 
 ```sh

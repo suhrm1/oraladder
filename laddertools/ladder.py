@@ -51,9 +51,7 @@ class PlayerLookup(UserDict):
 
     def _insert_from_fingerprint(self, fingerprint):
         profile_id, name, avatar_url = self.accounts_db.get(fingerprint)
-        self.data.setdefault(
-            profile_id, _Player(self.ranking, profile_id, name, avatar_url)
-        )
+        self.data.setdefault(profile_id, _Player(self.ranking, profile_id, name, avatar_url))
         self._names.setdefault(self.data[profile_id].name, self.data[profile_id])
         return self.data[profile_id]
 
@@ -108,7 +106,6 @@ class _Player:
 
 
 class _OutCome:
-
     def __init__(self, result, p0, p1):
         self._hash = hashlib.sha256(result.filename.encode()).hexdigest()
         self._filename = result.filename
@@ -129,7 +126,7 @@ class _OutCome:
 
     @staticmethod
     def _sql_date_fmt(dt):
-        return dt.strftime('%Y-%m-%d %H:%M:%S')
+        return dt.strftime("%Y-%m-%d %H:%M:%S")
 
     @property
     def sql_row(self):
@@ -194,9 +191,9 @@ def _preprocess_period(args):
         else:
             end = today + datetime.timedelta(days=1)
     else:
-        if args.period == '1m':
+        if args.period == "1m":
             start = datetime.date(today.year, today.month, 1)
-        elif args.period == '2m':
+        elif args.period == "2m":
             start_month = ((today.month - 1) & ~1) + 1
             start = datetime.date(today.year, start_month, 1)
         else:
@@ -212,15 +209,15 @@ def _main(args):
 
     # We don't know if the new submitted replays will be properly ordered, so
     # all the information needs to be reconstructed
-    c.execute('DROP TABLE IF EXISTS players')
-    c.execute('DROP TABLE IF EXISTS outcomes')
+    c.execute("DROP TABLE IF EXISTS players")
+    c.execute("DROP TABLE IF EXISTS outcomes")
 
     with open(args.schema) as f:
         c.executescript(f.read())
 
     # Re-use the cached OpenRA account information to prevent stressing too
     # much the service
-    request_accounts = c.execute('SELECT * FROM accounts')
+    request_accounts = c.execute("SELECT * FROM accounts")
     accounts_db = {fp: (pid, pname, avatar_url) for fp, pid, pname, avatar_url in request_accounts.fetchall()}
 
     period_dict = _preprocess_period(args)
@@ -237,37 +234,37 @@ def _main(args):
     players_sql = [p.sql_row for p in players]
     accounts_sql = [(fp, acc[0], acc[1], acc[2]) for fp, acc in accounts_db.items() if acc is not None]
 
-    c.executemany('INSERT OR IGNORE INTO accounts VALUES (?,?,?,?)', accounts_sql)
-    c.executemany('INSERT OR IGNORE INTO players VALUES (?,?,?,?,?,?,?,?)', players_sql)
-    c.executemany('INSERT OR IGNORE INTO outcomes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', outcomes_sql)
+    c.executemany("INSERT OR IGNORE INTO accounts VALUES (?,?,?,?)", accounts_sql)
+    c.executemany("INSERT OR IGNORE INTO players VALUES (?,?,?,?,?,?,?,?)", players_sql)
+    c.executemany("INSERT OR IGNORE INTO outcomes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", outcomes_sql)
 
     conn.commit()
     conn.close()
 
 
 def run():
-    logging.basicConfig(level='INFO')
+    logging.basicConfig(level="INFO")
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', '--database', default='db.sqlite3')
-    parser.add_argument('-s', '--schema', default=op.join(op.dirname(__file__), 'ladder.sql'))
-    parser.add_argument('-r', '--ranking', choices=ranking_systems.keys(), default='trueskill')
-    parser.add_argument('-p', '--period')
-    parser.add_argument('--start')
-    parser.add_argument('--end')
-    parser.add_argument('--bans-file')
-    parser.add_argument('-l', '--log-level', default="WARNING")
-    parser.add_argument('replays', nargs='*')
+    parser.add_argument("-d", "--database", default="db.sqlite3")
+    parser.add_argument("-s", "--schema", default=op.join(op.dirname(__file__), "ladder.sql"))
+    parser.add_argument("-r", "--ranking", choices=ranking_systems.keys(), default="trueskill")
+    parser.add_argument("-p", "--period")
+    parser.add_argument("--start")
+    parser.add_argument("--end")
+    parser.add_argument("--bans-file")
+    parser.add_argument("-l", "--log-level", default="WARNING")
+    parser.add_argument("replays", nargs="*")
     args = parser.parse_args()
 
     logging.basicConfig(level=args.log_level)
 
-    lockfile = args.database + '.lock'
+    lockfile = args.database + ".lock"
     lock = FileLock(lockfile, timeout=1)
     try:
         with lock:
             _main(args)
     except Timeout:
-        logging.error('Another instance of this application currently holds the %s lock file.', lockfile)
+        logging.error("Another instance of this application currently holds the %s lock file.", lockfile)
 
 
 def initialize_periodic_databases():
@@ -286,14 +283,14 @@ def initialize_periodic_databases():
     parameters.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('-s', '--schema', default=op.join(op.dirname(__file__), 'ladder.sql'))
-    parser.add_argument('-r', '--ranking', choices=ranking_systems.keys(), default='trueskill')
-    parser.add_argument('--bans-file')
-    parser.add_argument('-m', '--mod', default='ra')
-    parser.add_argument('-y', '--year', type=int, default=datetime.date.today().year)
-    parser.add_argument('--start-month', type=int, default='1', help="Number between 1 and 12")
-    parser.add_argument('-l', '--log-level', default='WARNING')
-    parser.add_argument('replays', nargs='*')
+    parser.add_argument("-s", "--schema", default=op.join(op.dirname(__file__), "ladder.sql"))
+    parser.add_argument("-r", "--ranking", choices=ranking_systems.keys(), default="trueskill")
+    parser.add_argument("--bans-file")
+    parser.add_argument("-m", "--mod", default="ra")
+    parser.add_argument("-y", "--year", type=int, default=datetime.date.today().year)
+    parser.add_argument("--start-month", type=int, default="1", help="Number between 1 and 12")
+    parser.add_argument("-l", "--log-level", default="WARNING")
+    parser.add_argument("replays", nargs="*")
     args = parser.parse_args()
 
     logging.basicConfig(level=args.log_level)
@@ -302,7 +299,7 @@ def initialize_periodic_databases():
     start_month = args.start_month - (args.start_month & 1 == 0)
 
     start_date = datetime.date(year=args.year, month=start_month, day=1)
-    season_counter = ceil(start_month/2)
+    season_counter = ceil(start_month / 2)
     prev_db_name = None
 
     while True:
@@ -325,7 +322,7 @@ def initialize_periodic_databases():
         # Track database filename for next iteration
         prev_db_name = db_name
 
-        lockfile = db_name + '.lock'
+        lockfile = db_name + ".lock"
         args.start = str(start_date)
         args.end = str(end_date)
         args.database = db_name
@@ -335,11 +332,13 @@ def initialize_periodic_databases():
         try:
             with FileLock(lockfile, timeout=1):
                 _main(args)
-                logging.info(f"Created database file {db_name} using "
-                             f"start date {start_date}, end date {end_date}, source "
-                             f"folder {args.replays}.")
+                logging.info(
+                    f"Created database file {db_name} using "
+                    f"start date {start_date}, end date {end_date}, source "
+                    f"folder {args.replays}."
+                )
         except Timeout:
-            logging.error('Another instance of this application currently holds the %s lock file.', lockfile)
+            logging.error("Another instance of this application currently holds the %s lock file.", lockfile)
 
         #
         start_date = start_date.replace(month=(start_date.month + 2) % 12)

@@ -21,7 +21,6 @@ from .abc import RankingBase
 
 
 class _RatingTrueskill:
-
     def __init__(self, env, internal=None):
         self.internal = trueskill.Rating() if internal is None else internal
         self._env = env
@@ -37,7 +36,6 @@ class _RatingTrueskill:
 
 
 class RankingTrueskill(RankingBase):
-
     def __init__(self):
         self._env = trueskill.TrueSkill(draw_probability=0)
 

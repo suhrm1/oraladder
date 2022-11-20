@@ -13,6 +13,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 ### Security
 
+## [2.0.2] - 2022-11-20
+
+### Added
+- Added configuration files for development process tools `pre-commit` and `black`:
+  - [`.pre-commit-config.yaml`](./.pre-commit-config.yaml) for [Pre-Commit](https://pre-commit.com/)
+  - [`pyproject.toml`](./pyproject.toml) for [Black](https://black.readthedocs.io/en/stable/)
+- Added `requirements.txt` file to pin Python module versions.
+
+### Changed
+- Re-formatted all source files using `black`
+
 ## [2.0.1] - 2022-11-10
 
 ### Added
@@ -29,9 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added CSS/JS based UI support for responsive navbar
   - Added exposition texts to `leaderboard` [template file](ladderweb/templates/leaderboard.html)
   - Added history of player rankings across seasons to `player` page
-- Added ladder map pack [`2022.1`](ladderweb/static/ladder-map-pack-2021.1.zip); see corresponding maps on the 
+- Added ladder map pack [`2022.1`](ladderweb/static/ladder-map-pack-2021.1.zip); see corresponding maps on the
   [OpenRA resource center](https://resource.openra.net/maps/?mod=ra&category=Ladder+2022.1)
 
 ### Changed
 - Refactored handling of database selection in the `ladderweb` subproject to allow for a dynamic number of 2-month-period databases
-
