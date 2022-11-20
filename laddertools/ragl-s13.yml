@@ -37,6 +37,7 @@ Forfeit:
     - 6771
     - 6751
     - 15899
+    - 12283
 
 #Forfeit_Games:
     # - [ winner_id, loser_id, decision date (YYYY-MM-DD), reason ]
