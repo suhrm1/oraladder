@@ -38,8 +38,18 @@ Forfeit:
     - 6751
     - 15899
     - 12283
+    - 9984
+    - 16222
+    - 11099
 
 #Forfeit_Games:
     # - [ winner_id, loser_id, decision date (YYYY-MM-DD), reason ]
 
-#Playoffs:
+Playoffs:
+    Masters Finale:
+        bestof: 5
+        players:
+            - 6430
+            - 13705
+            - 15421
+            - 6793
