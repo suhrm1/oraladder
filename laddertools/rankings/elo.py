@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-from .abc import RankingBase
+from laddertools.rankings.abc import RankingBase
 
 
 class _RatingELO:
