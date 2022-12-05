@@ -17,7 +17,7 @@
 
 import trueskill
 
-from .abc import RankingBase
+from laddertools.rankings.abc import RankingBase
 
 
 class _RatingTrueskill:
