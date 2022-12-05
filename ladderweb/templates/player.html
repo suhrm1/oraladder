@@ -59,7 +59,7 @@
 			   title="{{ season.season.duration }} from {{ season.season.start }} until {{ season.season.end }}"
 			   {% endif %}>
 			<a href="{{ url_for('player', profile_id=player.profile_id, period=season.season.id) }}">{{ season.season.title }}</a></td>
-		<td>{% if season.trophy %}{{ season.trophy }}{% else %}{{ season.rank }}{% endif %}</td>
+		<td>{% if season.trophy %}{{ season.trophy }}{% else %}<strong>{{ season.rank }}</strong>{% endif %} / {{ season.players }}</td>
 		<td>{{ season.rating }}</td>
 		<td>{{ season.games }}</td>
 		<td>{{ season.wins }}</td>

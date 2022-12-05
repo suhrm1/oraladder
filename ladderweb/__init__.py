@@ -405,8 +405,10 @@ def _get_player_season_history(mod, profile_id):
                     f"""select count(profile_id) from players
                     where rating>{stats['rating']} AND NOT banned"""
                 ).fetchone()[0]
+                players = db.execute(f"""select count(profile_id) from players""").fetchone()[0]
 
                 stats["rank"] = rank + 1
+                stats["players"] = players
                 stats["trophy"] = ""
                 if rank < 3:
                     stats["trophy"] = ["🥇", "🥈", "🥉"][rank]
