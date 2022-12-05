@@ -17,10 +17,12 @@
 
 from laddertools.rankings.elo import RankingELO
 from laddertools.rankings.glicko import RankingGlicko
+from laddertools.rankings.openskill import RankingOpenskill
 from laddertools.rankings.trueskill import RankingTrueskill
 
 ranking_systems = dict(
     trueskill=RankingTrueskill,
     elo=RankingELO,
     glicko=RankingGlicko,
+    openskill=RankingOpenskill,
 )
