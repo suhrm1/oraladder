@@ -2,6 +2,7 @@ black==22.10.0
 filelock==3.8.0
 Flask==2.2.2
 numpy==1.23.4
+openskill==3.1.0
 pre-commit==2.20.0
 pydantic==1.10.2
 PyYAML==6.0
