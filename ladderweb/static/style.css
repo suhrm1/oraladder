@@ -234,3 +234,7 @@ select, input {
 	color: var(--color_text1);
 	color: #707070;
 }
+
+.season_select_container {
+	overflow: auto !important;
+}
