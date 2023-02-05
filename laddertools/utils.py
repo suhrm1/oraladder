@@ -23,9 +23,10 @@ from typing import Optional
 from urllib.request import urlopen
 
 from . import miniyaml, replay
+from .replay import GamePlayerInfo
 
 
-def _update_account_cache(accounts_db, player):
+def _update_account_cache(accounts_db: dict, player: GamePlayerInfo):
     """
     Query OpenRA account service to get information on the player
     """
