@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<h2>{% block title %}High Score{% endblock %}</h2>
+
+<div>
+	<p>The high score ranking is the "who is who" of the most successful OpenRA Ladder players. To make the scoreboard
+	a player must compete in the ranked ladder seasons and score at least a position among the top 10 percent
+	(relative to the number of active players in the season). To climb to the top of the high score table, players need
+	to claim 1st place in as many individual seasons as possible.</p>
+</div>
+
+<table id="highscore" class="display">
+	<thead>
+	<tr>
+		<th>Rank</th>
+		<th>Player</th>
+		<th>1st Place</th>
+		<th>2nd Place</th>
+		<th>3rd Place</th>
+		<th>Top 10%</th>
+		<th>Career Wins</th>
+		<th>Career Games</th>
+		<th title="The number of seasons this player has participated in">Seasons</th>
+	</tr>
+	</thead>
+	<tbody>
+	{% for player in highscore %}
+	<tr>
+		<td>{{ player.rank }}</td>
+		<td class="player_avatar"><div class="avatar">{% if player.avatar_url %}<img src="{{ player.avatar_url }}" alt="">{% endif %}</div>
+			<a href="{{ url_for('player', profile_id=player.profile_id) }}">{{ player.profile_name }}</a></td>
+		<td>{{ player.first_place }}</td>
+		<td>{{ player.second_place }}</td>
+		<td>{{ player.third_place }}</td>
+		<td>{{ player.top_ten_percent }}</td>
+		<td>{{ player.career_wins }}</td>
+		<td>{{ player.career_games }}</td>
+		<td>{{ player.seasons }}</td>
+	</tr>
+	{% endfor %}
+	</tbody>
+</table>
+<script>
+$(document).ready(
+	function () {
+		$('#highscore').DataTable({
+			paging: false,
+			ordering: true,
+		});
+	}
+);
+
+</script>
+<!--
+<h2>Various Achievements</h2>
+<div>
+	<p>Intro text for achievements</p>
+	<p>Winning streaks, best win/loss ratio, ...</p>
+</div>
+-->
+
+{% endblock %}

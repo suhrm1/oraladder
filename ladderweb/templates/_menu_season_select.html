@@ -1,0 +1,7 @@
+<div class="season_select_container">
+    {% for season in seasons_menu %}
+    <div class="{{ 'active' if season.active }}">
+        &nbsp;<a href="{{ season.url }}">{{ season.caption }}</a>&nbsp;
+    </div>
+    {% endfor %}
+</div>

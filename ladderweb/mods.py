@@ -4,8 +4,38 @@ mods = dict(
         icon="icon-ra.png",
         url="https://github.com/OpenRA/OpenRA/releases/tag/release-20210321",
         release="release-20210321",
-        supports_analysis=True,
+        # supports_analysis=True,
         mappacks=(
+            dict(
+                label="2023.0 (2023-01-07)",
+                filename="ladder-map-pack-2023.0.zip",
+                changelog="""
+                    The 2023.0 map pack contains an entirely new selection of maps with a broad variety in style.
+                    Most notably, a set of "fun" maps have been added to the pool that drastically differ from
+                    established competitive 1v1 layout. All maps have been updated to
+                    <a href="https://github.com/tttppp/ora-balance-iteration/blob/master/CHANGELOG.md#35">Balance Iteration 3.5</a>.
+                """,
+                maps=(
+                    ("Almighty petrodollar", "Lucian"),
+                    ("Autumn Mix", "Blackened"),
+                    ("Below Zero", "Lad"),
+                    ("Clearing", "Pinkthoth"),
+                    ("Deciduous Ring", "Blackened"),
+                    ("Desert Strike", "Lad"),
+                    ("Excavations", "Pinkthoth"),
+                    ("Jungle Boogie", "Pinkthoth"),
+                    ("Paradisio", "Pinkthoth"),
+                    ("Pulverize", "J MegaTank"),
+                    ("Strashno", "Pinkthoth"),
+                    ("Thales", "Strauss"),
+                    ("The Long Night", "Lad"),
+                    ("Timian", "Widow"),
+                    ("Twisted River of Gold", "netnazgul"),
+                    ("The Pooper Bowl 1v1", "Poop"),
+                    ("4 Nukes", "J MegaTank"),
+                    ("Duel", "Lane Madsen"),
+                ),
+            ),
             dict(
                 label="2022.1 (2022-10-30)",
                 filename="ladder-map-pack-2022.1.zip",

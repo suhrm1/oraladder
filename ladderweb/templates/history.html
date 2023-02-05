@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<h2>{% block title %}History{% endblock %}</h2>
+
+<div>
+	<p>
+		The <strong>OpenRA Competitive Multiplayer Ladder</strong> is an automated result
+		capture and ranking system for 1v1 online games.
+		<a href="{{ url_for('info', mod=mod_id) }}">Click here</a> for more information on how this works
+		and how you can join.
+	</p>
+</div>
+
+{% for title, seasons in seasons %}
+<h2>{{ title }}</h2>
+<div>
+	<table id="season-history">
+		{% include '_season_table.html' %}
+	</table>
+</div>
+{% endfor %}
+
+{% endblock %}

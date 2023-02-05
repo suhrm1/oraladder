@@ -1,26 +1,17 @@
-{% extends 'base.html' %}
-
-{% block title %}Global stats{% endblock %}
+<h2>{% block title %}Seasons statistics{% endblock %}</h2>
 
 {% block content %}
-{% if period_info %}
-	<div>
-		<p>
-			<strong>Selected Period</strong>: from <strong>{{ period_info.start }}</strong>
-			to <strong>{{ period_info.end }}</strong> ({{ period_info.duration }})
-		</p>
-	</div>
-{% endif %}
-<h2>Misc</h2>
+
+<h3>Misc</h3>
 <dl>
-	<dt>Games:</dt><dd>{{ nb_games }}</dd>
-	<dt>Players:</dt><dd>{{ nb_players }}</dd>
-	<dt>Average game duration:</dt><dd>{{ avg_duration }}</dd>
+	<dt>Games:</dt><dd>{{ season_stats.nb_games }}</dd>
+	<dt>Players:</dt><dd>{{ season_stats.nb_players }}</dd>
+	<dt>Average game duration:</dt><dd>{{ season_stats.avg_game_duration }}</dd>
 	<dt>Average games per day:</dt><dd>{{ '%0.1f' % activity_stats.games_per_day }}</dd>
 </dl>
 
 {% if activity_stats.data %}
-<h2>Activity</h2>
+<h3>Activity</h3>
 <canvas id="activity_chart"></canvas>
 <script>
 	Chart.defaults.global.defaultFontColor = "#e8e8e8";
@@ -50,7 +41,7 @@
 {% endif %}
 
 {% if map_stats.data %}
-<h2>Maps</h2>
+<h3>Maps</h3>
 <canvas id="maps_chart"></canvas>
 <script>
 	Chart.defaults.global.defaultFontColor = "#e8e8e8";
@@ -82,7 +73,7 @@
 {% endif %}
 
 {% if faction_stats.data %}
-<h2>Preferred factions</h2>
+<h3>Preferred factions</h3>
 <canvas id="faction_chart"></canvas>
 <script>
 	Chart.defaults.global.defaultFontColor = "#e8e8e8";

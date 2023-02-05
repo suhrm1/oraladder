@@ -4,14 +4,15 @@
 
 {% block content %}
 <h2>{{ player.profile_name }}</h2>
-{%if player.avatar_url %}<img class="avatar" src="{{ player.avatar_url }}" alt="{{ player.profile_name }}">{%endif%}
+{% if player.avatar_url %}
+<img class="avatar" src="{{ player.avatar_url }}" alt="{{ player.profile_name }}">
+{% endif %}
+{% if player.seasons>0 %}
 <p><strong>{{ player.profile_name }}</strong> has played {{ player.wins + player.losses }} games since
 	{{ player.first_game[:10] }}. They have won {{ player.wins }} games during
-	{{ (player.seasons | count)-1 }} seasons to reach their current all-time rank of
-	{{ player.rank }} at {{ player.rating }} points.</p>
-<p>Their games have lasted
+	{{ player.seasons }} seasons. Their games have lasted
 	{{ player.avg_game_duration }} minutes on average. {{ player.profile_name }} has
-	last played a game on ladder servers on {{ player.last_game[:10] }}</p>
+	last played a game on ladder servers on {{ player.last_game[:10] }}.</p>
 
 <h3>Alltime statistics</h3>
 <table id="player-alltime-info">
@@ -34,10 +35,11 @@
 		<td>{{ player.avg_game_duration }}</td>
 		<td>{{ player.first_game[:10] }}</td>
 		<td>{{ player.last_game[:10] }}</td>
-		<td>{{ (player.seasons | count)-1 }}</td>
+		<td>{{ player.seasons }}</td>
 	</tr>
 	</tbody>
 </table>
+
 <h3>Rankings</h3>
 <table id="player-rankings">
 	<thead>
@@ -53,13 +55,18 @@
 	</tr>
 	</thead>
 	<tbody>
-	{% for season in player.seasons %}
-	<tr {% if season.season.id == season_info.id %}style="font-weight: bold;" {% endif %}>
+	{% for season in player.season_history %}
+	<tr {% if season.season.id == season_info.id %}style="font-weight: bold;" {% endif %}{% if not season.eligible %}class="preliminary_ranking"{% endif %}>
 		<td {% if season.season.id !='all' %}
 			   title="{{ season.season.duration }} from {{ season.season.start }} until {{ season.season.end }}"
 			   {% endif %}>
 			<a href="{{ url_for('player', profile_id=player.profile_id, period=season.season.id) }}">{{ season.season.title }}</a></td>
-		<td>{% if season.trophy %}{{ season.trophy }}{% else %}<strong>{{ season.rank }}</strong>{% endif %} / {{ season.players }}</td>
+		<td>{% if season.eligible %}
+			{% if season.trophy %}{{ season.trophy }}{% else %}<strong>{{ season.rank }}</strong>{% endif %} / {{ season.players }}
+			{% else %}
+			<strong><span title="{{ season.comment }}">🛈</span></strong>
+			{% endif %}
+		</td>
 		<td>{{ season.rating }}</td>
 		<td>{{ season.games }}</td>
 		<td>{{ season.wins }}</td>
@@ -70,6 +77,54 @@
 	{% endfor %}
 	</tbody>
 </table>
+
+{% if player.other_seasons %}
+
+
+<h3>Other Competition Results</h3>
+<table id="player-rankings">
+	<thead>
+	<tr>
+		<th>Season</th>
+		<th>Rank</th>
+		<th>Rating</th>
+		<th>Played</th>
+		<th>Wins</th>
+		<th>Losses</th>
+		<th>Win rate</th>
+		<th>Avg. game duration</th>
+	</tr>
+	</thead>
+	<tbody>
+	{% for season in player.other_seasons %}
+	<tr {% if season.season.id == season_info.id %}style="font-weight: bold;" {% endif %}{% if not season.eligible %}class="preliminary_ranking"{% endif %}>
+		<td {% if season.season.id !='all' %}
+			   title="{{ season.season.duration }} from {{ season.season.start }} until {{ season.season.end }}"
+			   {% endif %}>
+			<a href="{{ url_for('player', profile_id=player.profile_id, period=season.season.id) }}">{{ season.season.title }}</a></td>
+		<td>{% if season.eligible %}
+			{% if season.trophy %}{{ season.trophy }}{% else %}<strong>{{ season.rank }}</strong>{% endif %} / {{ season.players }}
+			{% else %}
+			<strong><span title="{{ season.comment }}">🛈</span></strong>
+			{% endif %}
+		</td>
+		<td>{{ season.rating }}</td>
+		<td>{{ season.games }}</td>
+		<td>{{ season.wins }}</td>
+		<td>{{ season.losses }}</td>
+		<td>{{ season.ratio }}</td>
+		<td>{{ season.avg_game_duration }}</td>
+	</tr>
+	{% endfor %}
+	</tbody>
+</table>
+
+{% endif %}
+
+{% else %}
+<div><p><strong>{{ player.profile_name }}</strong> has not played any ladder games for the selected mod.</p></div>
+{% endif %}
+{% if player.current_season %}
 
 <h2>Season statistics: {{ season_info.title }}</h2>
 
@@ -182,4 +237,7 @@ $(document).ready(
 		}
 	});
 </script>
+
+{% endif %}
+
 {% endblock %}

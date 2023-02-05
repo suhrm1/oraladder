@@ -20,6 +20,7 @@ import datetime
 import logging
 import os.path
 from math import ceil
+from os import path as op
 from typing import Optional
 
 import yaml
@@ -30,11 +31,14 @@ class Season(BaseModel):
     id: str
     mod: str
     title: str
-    database_file: str
+    replay_path: str
+    algorithm: str
     description: Optional[str]
     start: Optional[datetime.date]
     end: Optional[datetime.date]
+    active: Optional[bool] = True
     duration: Optional[str]
+    group: Optional[str] = "seasons"
 
     def get_info(self) -> dict:
         if self.id == "2m" and self.start is None:
@@ -55,38 +59,3 @@ class Season(BaseModel):
             end=self.end,
             duration=self.duration,
         )
-
-
-def load_yaml_season_config_from_directory(directory: str) -> {str: {str: Season}}:
-    logging.debug(f"Loading season configuration from YAML files in {directory}")
-
-    if not os.path.isdir(directory):
-        logging.error(f"Not a directory")
-        return None
-
-    # initialize with default database keys and None values to impose static order
-    seasons = {"ra": {"all": None, "2m": None}, "td": {"all": None, "2m": None}}
-
-    for base_path, _, files in os.walk(directory):
-        for filename in files:
-            if os.path.splitext(filename)[1] in [".yml", ".yaml"]:
-                logging.debug(f"Loading season configuration from {filename}")
-                with open(os.path.join(base_path, filename), "r") as f:
-                    yaml_content = yaml.safe_load(f.read())
-                    # content should be a list of objects/dictionaries
-                    if type(yaml_content) is list:
-                        for item in yaml_content:
-                            try:
-                                season = Season(**item)
-                                if season.mod in seasons.keys():
-                                    seasons[season.mod][season.id] = season
-                                else:
-                                    seasons[season.mod] = {season.id: season}
-                            except (ValidationError, TypeError) as e:
-                                logging.warning(
-                                    f'Could not parse "{item}" into Season object.',
-                                    exc_info=False,
-                                )
-
-    logging.debug(f"Collected season configuration: {seasons}")
-    return seasons
