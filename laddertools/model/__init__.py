@@ -20,6 +20,11 @@ class PlayerLookup(UserDict):
         self.accounts_db = accounts_db
         self.ranking = ranking
         self._names = {}
+        self.data = {}
+        for fingerprint in self.accounts_db:
+            profile_id, name, avatar_url = self.accounts_db.get(fingerprint)
+            self.data.setdefault(profile_id, Player(self.ranking, profile_id, name, avatar_url))
+            self._names.setdefault(self.data[profile_id].name, self.data[profile_id])
 
     def _insert_from_fingerprint(self, fingerprint):
         profile_id, name, avatar_url = self.accounts_db.get(fingerprint)
@@ -30,6 +35,8 @@ class PlayerLookup(UserDict):
     def __getitem__(self, obj):
         if isinstance(obj, GamePlayerInfo):
             return self._insert_from_fingerprint(obj.fingerprint)
+        if isinstance(obj, int):
+            return self.data[obj]
         if isinstance(obj, str):  # we assume it's the name of the player, then.
             if obj not in self._names:
                 raise KeyError(obj)
