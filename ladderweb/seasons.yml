@@ -2,19 +2,27 @@
   mod: ra
   title: All-time
   description:
-  database_file: db-ra-all.sqlite3
+  algorithm: trueskill
+  replay_path: /replays/ra
+  group: other
 - id: 2m
   mod: ra
   title: Current season
-  database_file: db-ra-2m.sqlite3
   duration: 2 months
+  algorithm: trueskill
+  replay_path: /replays/ra
+  group: seasons
 - id: all
   mod: td
   title: All-time
   description:
-  database_file: db-td-all.sqlite3
+  algorithm: trueskill
+  replay_path: /replays/td
+  group: other
 - id: 2m
   mod: td
   title: Current season
-  database_file: db-td-2m.sqlite3
   duration: 2 months
+  algorithm: trueskill
+  replay_path: /replays/td
+  group: seasons

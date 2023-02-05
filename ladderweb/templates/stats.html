@@ -1,0 +1,106 @@
+<h2>{% block title %}Seasons statistics{% endblock %}</h2>
+
+{% block content %}
+
+<h3>Misc</h3>
+<dl>
+	<dt>Games:</dt><dd>{{ season_stats.nb_games }}</dd>
+	<dt>Players:</dt><dd>{{ season_stats.nb_players }}</dd>
+	<dt>Average game duration:</dt><dd>{{ season_stats.avg_game_duration }}</dd>
+	<dt>Average games per day:</dt><dd>{{ '%0.1f' % activity_stats.games_per_day }}</dd>
+</dl>
+
+{% if activity_stats.data %}
+<h3>Activity</h3>
+<canvas id="activity_chart"></canvas>
+<script>
+	Chart.defaults.global.defaultFontColor = "#e8e8e8";
+	var ctx = document.getElementById('activity_chart');
+	var myChart = new Chart(ctx, {
+		type: 'bar',
+		data: {
+			labels: {{ activity_stats.dates | safe }},
+			datasets: [{
+				label: 'Games played',
+				data: {{ activity_stats.data | safe }},
+				backgroundColor: '#fff',
+				fontColor: '#fff'
+			}]
+		},
+		options: {
+			scales: {
+				yAxes: [{
+					ticks: {
+						beginAtZero: true
+					}
+				}]
+			}
+		}
+	});
+</script>
+{% endif %}
+
+{% if map_stats.data %}
+<h3>Maps</h3>
+<canvas id="maps_chart"></canvas>
+<script>
+	Chart.defaults.global.defaultFontColor = "#e8e8e8";
+	var ctx = document.getElementById('maps_chart');
+	var myChart = new Chart(ctx, {
+		type: 'doughnut',
+		data: {
+			labels: {{ map_stats.names | safe }},
+			datasets: [{
+				data: {{ map_stats.data | safe }},
+				backgroundColor: {{ map_stats.colors | safe }},
+				fontColor: '#fff'
+			}]
+		},
+		options: {
+			tooltips: {
+				callbacks: {
+					label: function(tooltipItem, data) {
+						var label = data['labels'][tooltipItem['index']]
+						var value = data['datasets'][0]['data'][tooltipItem['index']]
+						var pcent = value / {{ map_stats.total }} * 100
+						return label + ': ' + pcent.toFixed(1) + '% (' + value + '/' + {{ map_stats.total }} + ')'
+					},
+				},
+			},
+		},
+	});
+</script>
+{% endif %}
+
+{% if faction_stats.data %}
+<h3>Preferred factions</h3>
+<canvas id="faction_chart"></canvas>
+<script>
+	Chart.defaults.global.defaultFontColor = "#e8e8e8";
+	var ctx = document.getElementById('faction_chart');
+	var myChart = new Chart(ctx, {
+		type: 'doughnut',
+		data: {
+			labels: {{ faction_stats.names | safe }},
+			datasets: [{
+				data: {{ faction_stats.data | safe }},
+				backgroundColor: {{ faction_stats.colors | safe }},
+				fontColor: '#fff'
+			}]
+		},
+		options: {
+			tooltips: {
+				callbacks: {
+					label: function(tooltipItem, data) {
+						var label = data['labels'][tooltipItem['index']]
+						var value = data['datasets'][0]['data'][tooltipItem['index']]
+						var pcent = value / {{ faction_stats.total }} * 100
+						return label + ': ' + pcent.toFixed(1) + '% (' + value + '/' + {{ faction_stats.total }} + ')'
+					},
+				},
+			},
+		},
+	});
+</script>
+{% endif %}
+{% endblock %}

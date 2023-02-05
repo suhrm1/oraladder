@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<h2>{% block title %}Welcome to the OpenRA Ladder!{% endblock %}</h2>
+
+<!--
+<div class="announcement-container">
+	<div class="announcement-content">
+		...
+	</div>
+</div>
+-->
+
+<div>
+	<p>
+		The <strong>OpenRA Competitive Multiplayer Ladder</strong> is an automated result
+		capture and ranking system for 1v1 online games run by the player community. To play
+		ranked games, you only need an account on the OpenRA forum connected to your game client
+		to get access to the official Ladder game servers.
+		Check out the <a href="{{ url_for('info', mod=mod_id, period=period_info.id) }}"><strong>INFO</strong></a> page for more
+		information on how this works and how you can join the competition.
+	</p>
+	<p>
+		The OpenRA Ladder was started in December 2020 for the <strong>Red Alert</strong> mod
+		with a continuous "all-time" ranking and periodical rankings which would reset every
+		other / every 2 months. Game servers and leaderboards for the <strong>Tiberian Dawn</strong>
+		mod were started in April 2020 following the same concept.
+	</p>
+	<p>
+		As of <strong>January 2023</strong> only the 2-month ranking seasons are continued and documented
+		on this website. Check out the <a href="{{ url_for('highscore', mod=mod_id, period=period_info.id) }}">
+		<strong>HIGH SCORE</strong></a> for a list of accumulated achievements
+		of the most successful OpenRA Ladder players. All past seasons' archived results can be accessed
+		through the <a href="{{ url_for('history', mod=mod_id, period=period_info.id) }}">
+		<strong>HISTORY</strong></a> page.
+	</p>
+</div>
+<h2>Current Standings</h2>
+<div style="width: 100%">
+	<p>
+		We have RA and TD, flick the switch in the top menu to show the other mod's info....
+	</p>
+	<div class="home_splash_image_container">
+		<div class="home_splash_image" style="background-image: url({{ url_for('static', filename='splash_ra.png')}});">
+			<a href="{{ url_for('ladder', mod='ra')}}">
+				<img src="{{ url_for('static', filename='splash_overlay_ra.png') }}">
+			</a>
+		</div>
+		<div class="home_splash_image" style="background-image: url({{ url_for('static', filename='splash_td.png')}});">
+			<a href="{{ url_for('ladder', mod='td')}}">
+				<img src="{{ url_for('static', filename='splash_overlay_td.png') }}">
+			</a>
+		</div>
+
+	</div>
+</div>
+<h2>Install OpenRA and join the competition!</h2>
+<div>
+	<p>OpenRA is a free and open source game engine for a variety of mods. Check out <a href="https://openra.net" target="_blank">https://openra.net</a> to download the latest version.</p>
+	<p>Joining the competitive player scene for the OpenRA Ladder is as simple as starting the game, registering your
+		OpenRA Forum account, and joining one of the online multiplayer game servers designated as official
+		oraladder.net game servers.</p>
+	<p>Check out our <a href="{{ url_for('info', mod=mod_id, period=period_info.id) }}">INFO</a> page for more details.</p>
+</div>
+{% endblock %}

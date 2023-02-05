@@ -1,0 +1,31 @@
+<thead>
+<tr>
+    <th>Season</th>
+    <th>Start</th>
+    <th>End</th>
+    <th>1st Place</th>
+    <th>2nd Place</th>
+    <th>3rd Place</th>
+    <th>Active Players</th>
+    <th>Games Played</th>
+    <th>Algorithm</th>
+</tr>
+</thead>
+<tbody>
+{% for season in seasons %}
+<tr>
+    <td>
+        <a {% if season.description %}title="{{ season.description }}"{% endif %}
+           href="{{ url_for('ladder', period=season.season_id, mod=mod_id) }}">{{ season.title }}</a>
+    </td>
+    <td>{{ season.start }}</td>
+    <td>{{ season.end }}</td>
+    <td>{% if season.first_place %}<strong><a href="{{ url_for('player', profile_id=season.first_place.profile_id) }}">{{ season.first_place.profile_name }}</a></strong>{% endif %}</td>
+    <td>{% if season.second_place %}<a href="{{ url_for('player', profile_id=season.second_place.profile_id) }}">{{ season.second_place.profile_name }}</a>{% endif %}</td>
+    <td>{% if season.third_place %}<a href="{{ url_for('player', profile_id=season.third_place.profile_id) }}">{{ season.third_place.profile_name }}</a>{% endif %}</td>
+    <td>{{ season.nb_players }}</td>
+    <td>{{ season.nb_games }}</td>
+    <td><span title="{{ season.algorithm.description }}" style="cursor: help;">{{ season.algorithm.title }}</span></td>
+</tr>
+{% endfor %}
+</tbody>

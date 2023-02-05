@@ -17,11 +17,11 @@
 
 from abc import ABC, abstractmethod
 
-from laddertools.model import OutCome
+from laddertools.model import OutCome, PlayerLookup
 
 
 class RankingBase(ABC):
-    def compute_ratings_from_series_of_games(self, games, player_lookup):
+    def compute_ratings_from_series_of_games(self, games, player_lookup) -> (PlayerLookup, [OutCome]):
         player_ratings = {}
         game_ratings = []
         for g in games:
