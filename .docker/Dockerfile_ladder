@@ -2,8 +2,10 @@ FROM oraladder/base:latest
 
 # https://github.com/chartjs/Chart.js/releases/latest
 ENV CHART_JS_VERSION="2.9.3"
+
 # https://github.com/jquery/jquery/releases/latest
 ENV JQUERY_VERSION="3.6.0"
+
 # https://github.com/DataTables/DataTables/releases/latest
 ENV DATATABLES_VERSION="1.10.24"
 
@@ -13,14 +15,14 @@ RUN cd ladderweb/static/ \
     && curl -L https://cdn.datatables.net/v/dt/dt-${DATATABLES_VERSION}/datatables.min.js -o datatables.min.js \
     && curl -L https://code.jquery.com/jquery-${JQUERY_VERSION}.min.js -o jquery.min.js
 
+COPY requirements.txt .
+
 RUN python3 -m venv venv/
 
-RUN . venv/bin/activate && pip install gunicorn && pip install -e .
+RUN . venv/bin/activate && pip install gunicorn && pip install -e . && pip install -r requirements.txt
 
-RUN mkdir instance \
-    && for DB in "ra-all" "ra-2m" "td-all" "td-2m";  \
-        do venv/bin/ora-ladder -d "instance/db-${DB}.sqlite3";  \
-        done \
-    && mv -v ladderweb/seasons.yml instance/
+RUN mkdir instance && mv -v ladderweb/seasons.yml instance/
 
-CMD ["venv/bin/gunicorn", "-b", "0.0.0.0:8000", "ladderweb:app"]
+ENV GUNICORN_WORKER_TIMEOUT=90
+
+CMD venv/bin/gunicorn -b 0.0.0.0:8000 --timeout $GUNICORN_WORKER_TIMEOUT ladderweb:app

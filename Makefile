@@ -15,13 +15,6 @@ LADDER_STATIC = ladderweb/static/Chart.bundle.min.js  \
                 ladderweb/static/datatables.min.js    \
                 ladderweb/static/jquery.min.js        \
 
-LADDER_DATABASES = instance/db-ra-all.sqlite3 \
-                   instance/db-ra-2m.sqlite3  \
-                   instance/db-td-all.sqlite3 \
-                   instance/db-td-2m.sqlite3  \
-
-LADDER_DB_YAML = instance/seasons.yml
-
 # https://github.com/chartjs/Chart.js/releases/latest
 CHART_JS_VERSION = 2.9.3
 
@@ -32,9 +25,12 @@ JQUERY_VERSION = 3.6.0
 DATATABLES_VERSION = 1.10.24
 
 ladderdev: initladderdev
-	FLASK_APP=ladderweb FLASK_DEBUG=True FLASK_RUN_PORT=5000 $(VENV)/bin/flask run
+	FLASK_APP=ladderweb FLASK_DEBUG=True FLASK_RUN_PORT=5000 \
+	FLASK_LADDER_BANS_FILE="instance/banned_profiles" \
+	FLASK_LADDER_API_KEY=apitest \
+	$(VENV)/bin/flask run
 
-initladderdev: $(VENV) $(LADDER_STATIC) $(LADDER_DATABASES) $(LADDER_DB_YAML)
+initladderdev: $(VENV) $(LADDER_STATIC)
 
 ladderweb/static/Chart.min.css:
 	$(CURL) -L https://cdnjs.cloudflare.com/ajax/libs/Chart.js/$(CHART_JS_VERSION)/Chart.min.css -o $@
@@ -47,12 +43,6 @@ ladderweb/static/datatables.min.js:
 
 ladderweb/static/jquery.min.js:
 	$(CURL) -L https://code.jquery.com/jquery-$(JQUERY_VERSION).min.js -o $@
-
-$(LADDER_DATABASES): instance
-	([ -f $@ ] ||  $(VENV)/bin/ora-ladder -d $@)
-
-instance/seasons.yml: ladderweb/seasons.yml instance
-	([ -f $@ ] ||  cp $< $@)
 
 ragldev: initragldev
 	FLASK_APP=raglweb FLASK_DEBUG=True FLASK_RUN_PORT=5001 RAGLWEB_DATABASE="db-ragl.sqlite3" $(VENV)/bin/flask run
@@ -103,5 +93,6 @@ clean:
 $(VENV):
 	$(PYTHON) -m venv $@
 	$(VENV)/bin/python -m pip install -e .
+	$(VENV)/bin/python -m pip install -r requirements.txt
 
 .PHONY: ladderdev initladderdev wheel clean mappacks ragldev initragldev test
