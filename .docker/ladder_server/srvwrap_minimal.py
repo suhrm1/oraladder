@@ -41,10 +41,10 @@ World:
 		TechLevelDropdownLocked: true
 		GameSpeed: default
 		GameSpeedDropdownLocked: true
-	MPStartLocations:
+	MapStartingLocations:
 		SeparateTeamSpawnsCheckboxEnabled: true
 		SeparateTeamSpawnsCheckboxLocked: true
-	SpawnMPUnits:
+	SpawnStartingUnits:
 		StartingUnitsClass: none
 		DropdownLocked: true
 	TimeLimitManager:
@@ -86,10 +86,10 @@ World:
 		TechLevelDropdownLocked: true
 		GameSpeed: default
 		GameSpeedDropdownLocked: true
-	MPStartLocations:
+	MapStartingLocations:
 		SeparateTeamSpawnsCheckboxEnabled: true
 		SeparateTeamSpawnsCheckboxLocked: true
-	SpawnMPUnits:
+	SpawnStartingUnits:
 		StartingUnitsClass: none
 		DropdownLocked: true
 	TimeLimitManager:
@@ -117,7 +117,7 @@ def _patched_rules(mod, mod_file_path, overrides_rel_path):
 
 def patch():
     mod = os.getenv("Mod", "ra")
-    mod_base_path = f"/home/openra/lib/openra/mods/{mod}/"
+    mod_base_path = f"/home/openra/usr/lib/openra/mods/{mod}/"
     overrides_file = "server_settings.yaml"
     mod_file_path = mod_base_path + "mod.yaml"
     with open(mod_base_path + overrides_file, "w") as f:
