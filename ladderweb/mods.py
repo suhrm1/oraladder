@@ -2,10 +2,37 @@ mods = dict(
     ra=dict(
         label="Red Alert",
         icon="icon-ra.png",
-        url="https://github.com/OpenRA/OpenRA/releases/tag/release-20210321",
-        release="release-20210321",
+        url="https://github.com/OpenRA/OpenRA/releases/tag/release-20230225",
+        release="release-20230225",
         # supports_analysis=True,
         mappacks=(
+            dict(
+                label="2023.0 v2 (2023-02-25)",
+                filename="ladder-map-pack-2023.0_release20230225.zip",
+                changelog="""
+                    This map pack is the same as 2023.0 below, updated to be compatible with OpenRA release-20230225.
+                """,
+                maps=(
+                    ("Almighty petrodollar", "Lucian"),
+                    ("Autumn Mix", "Blackened"),
+                    ("Below Zero", "Lad"),
+                    ("Clearing", "Pinkthoth"),
+                    ("Deciduous Ring", "Blackened"),
+                    ("Desert Strike", "Lad"),
+                    ("Excavations", "Pinkthoth"),
+                    ("Jungle Boogie", "Pinkthoth"),
+                    ("Paradisio", "Pinkthoth"),
+                    ("Pulverize", "J MegaTank"),
+                    ("Strashno", "Pinkthoth"),
+                    ("Thales", "Strauss"),
+                    ("The Long Night", "Lad"),
+                    ("Timian", "Widow"),
+                    ("Twisted River of Gold", "netnazgul"),
+                    ("The Pooper Bowl 1v1", "Poop"),
+                    ("4 Nukes", "J MegaTank"),
+                    ("Duel", "Lane Madsen"),
+                ),
+            ),
             dict(
                 label="2023.0 (2023-01-07)",
                 filename="ladder-map-pack-2023.0.zip",
@@ -208,9 +235,31 @@ mods = dict(
     td=dict(
         label="Tiberian Dawn",
         icon="icon-td.png",
-        url="https://github.com/OpenRA/OpenRA/releases/tag/release-20210321",
-        release="release-20210321",
+        url="https://github.com/OpenRA/OpenRA/releases/tag/release-20230225",
+        release="release-20230225",
         mappacks=(
+            dict(
+                label="2023.0",
+                filename="ladder-map-pack-td-2023.0.zip",
+                changelog="""
+                    Map pack for OpenRA Release 20230225. Maps contain no custom balance rules
+                    because all the latest TD balance changes have been merged into the base game.
+                """,
+                maps=(
+                    ("16:9", "norman"),
+                    ("African Gambit", "MASTER, Jay"),
+                    ("A New Winter", "J MegaTank"),
+                    ("Blue Winter 1995", "J MegaTank"),
+                    ("CrackPoint", "MASTER"),
+                    ("Desert Cross", "J MegaTank"),
+                    ("Desert Mandarins", "MASTER"),
+                    ("Matchpoint", "ZxGanon"),
+                    ("Mountain Town Madness", "Blackened"),
+                    ("Rumble in the Jungle", "J MegaTank"),
+                    ("Tiberium Rift", "ZxGanon"),
+                    ("WarZoneX", "J MegaTank"),
+                ),
+            ),
             dict(
                 label="2021-04-05",
                 filename="ladder-map-pack-td-2021-04-05.zip",
