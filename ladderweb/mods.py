@@ -7,6 +7,52 @@ mods = dict(
         # supports_analysis=True,
         mappacks=(
             dict(
+                label="2023.1 (2023-03-05)",
+                filename="ladder-map-pack-2023.1.zip",
+                changelog="""
+                    The 2023.1 map pack extends the previous by adding another 15 maps while cycling out 3 meme
+                    maps for 3 new meme maps. Compatible with OpenRA Release version 20230225. Balance rules have
+                    been updated to <a href="https://github.com/tttppp/ora-balance-iteration/blob/3.5.2/CHANGELOG.md#352" target="_blank">v3.5.2</a>
+                    (which does not contain any actual changes but is optimized for the new game version)
+                """,
+                maps=(
+                    ("Almighty Petrodollar", "Lucian"),
+                    ("Amok", "Pinkthoth"),
+                    ("Autumn Mix", "Blackened"),
+                    ("Below Zero", "Lad"),
+                    ("Clearing", "Pinkthoth"),
+                    ("Conyard", "Blackened"),
+                    ("Cow Level", "Pinkthoth"),
+                    ("Dead of Winter", "Pinkthoth"),
+                    ("Deciduous Ring", "Blackened"),
+                    ("Desert Strike", "Lad"),
+                    ("Duskwood", "i like men"),
+                    ("Endless Night", "Pinkthoth"),
+                    ("Excavations", "Pinkthoth"),
+                    ("Gem Lord", "MicroBit/MegaTank"),
+                    ("Island Konflict", "MegaTank-Westwood Studios"),
+                    ("Jimmy got paid", "J MegaTank"),
+                    ("Jungle Boogie", "Pinkthoth"),
+                    ("Kitsunegari", "Pinkthoth"),
+                    ("Malevolence", "Blackened"),
+                    ("Military Mind", "J MegaTank"),
+                    ("Orthos", "Blackened"),
+                    ("Paradisio", "Pinkthoth"),
+                    ("Pulverize", "J MegaTank"),
+                    ("Queen of the Hill", "Pinkthoth"),
+                    ("Strashno", "Pinkthoth"),
+                    ("Syzygy", "Pinkthoth"),
+                    ("Thales", "Strauss"),
+                    ("The Long Night", "Lad"),
+                    ("Timian", "Widow"),
+                    ("Toxicity", "Pinkthoth"),
+                    ("Twisted River of Gold", "netnazgul"),
+                    ("Ultra Islands", "J MegaTank"),
+                    ("War Factory", "Blackened"),
+                    ("Wormrot", "Blackened"),
+                ),
+            ),
+            dict(
                 label="2023.0 v2 (2023-02-25)",
                 filename="ladder-map-pack-2023.0_release20230225.zip",
                 changelog="""
