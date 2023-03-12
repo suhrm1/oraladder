@@ -98,8 +98,9 @@ class LadderDatabase:
             result_list.append(dict(zip(columns, row)))
         return result_list
 
-    def fetch_table(self, table: str, condition: Optional[str] = None) -> List[dict]:
-        sql = f"SELECT * FROM {table}"
+    def fetch_table(self, table: str, condition: Optional[str] = None, distinct: Optional[bool] = False) -> List[dict]:
+        _dist = "DISTINCT" if distinct else ""
+        sql = f"SELECT {_dist} * FROM {table}"
         if condition is not None:
             sql += f" WHERE {condition}"
         with self.engine.connect() as conn:
@@ -363,24 +364,38 @@ class LadderDatabase:
                     stats[faction] = {keys[i]: count}
         return {faction: win_loss.get("wins", 0) + win_loss.get("losses", 0) for faction, win_loss in stats.items()}
 
-    def get_player_faction_stats(self, mod: str, season_id: str, profile_id: str) -> {}:
-        select = f"""SELECT (CASE
+    def get_player_faction_stats(self, mod: str, profile_id: str, season_id: Optional[str] = None) -> {}:
+        condition = f"p.profile_id='{profile_id}' AND g.mod='{mod}'"
+        if season_id is not None:
+            condition += f" AND g.season_id='{season_id}'"
+        select = f"""SELECT DISTINCT (CASE
                 WHEN g.profile_id0='{profile_id}' THEN selected_faction_0
                 WHEN g.profile_id1='{profile_id}' THEN selected_faction_1
             END) AS faction, COUNT(DISTINCT hash) AS count
             FROM SeasonGames g LEFT JOIN accounts p ON p.profile_id IN (g.profile_id0, g.profile_id1)
-            WHERE p.profile_id='{profile_id}' AND g.mod='{mod}' AND g.season_id='{season_id}'
+            WHERE {condition}
             GROUP BY faction;"""
         res = self.exec(select, fetch=True)
         return {row[0]: row[1] for row in res}
 
-    def get_player_map_stats(self, mod: str, season_id: str, profile_id: str) -> {}:
+    def get_player_map_stats(self, mod: str, profile_id: str, season_id: Optional[str] = None) -> {}:
+        condition = f"(g.profile_id0='{profile_id}' OR g.profile_id1='{profile_id}') AND g.mod='{mod}'"
+        if season_id is None:
+            # In this case we need to join the season table to add the season group as a condition
+            condition += f" AND s.`group`='seasons'"
+            join = "LEFT JOIN season s ON (g.season_id=s.id AND s.mod=g.mod)"
+        else:
+            # For any specific season, no join is required
+            condition += f" AND g.season_id='{season_id}'"
+            join = ""
         select = f"""SELECT map_title,
                 SUM((CASE WHEN g.profile_id0='{profile_id}' THEN 1 ELSE 0 END)) as wins,
                 SUM((CASE WHEN g.profile_id1='{profile_id}' THEN 1 ELSE 0 END)) as losses
             FROM SeasonGames g
-            WHERE (g.profile_id0='{profile_id}' OR g.profile_id1='{profile_id}') AND g.mod='{mod}' AND g.season_id='{season_id}'
+            {join}
+            WHERE {condition}
             GROUP BY map_title;"""
+        print(select)
         res = self.exec(select, fetch=True)
         return {row[0]: {"wins": row[1], "losses": row[2]} for row in res}
 
