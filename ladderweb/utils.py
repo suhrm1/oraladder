@@ -2,7 +2,7 @@ import colorsys
 import json
 import re
 from datetime import timedelta
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
 
@@ -115,8 +115,8 @@ def _scaled(a, m):
     return [round(x) for x in np.interp(mr, nr, a)]
 
 
-def _get_player_faction_stats(db: LadderDatabase, mod: str, season_id: str, profile_id: str):
-    _data = db.get_player_faction_stats(mod=mod, season_id=season_id, profile_id=profile_id)
+def _get_player_faction_stats(db: LadderDatabase, mod: str, profile_id: str, season_id: Optional[str]):
+    _data = db.get_player_faction_stats(mod=mod, profile_id=profile_id, season_id=season_id)
     faction_colors = _get_colors(len(_data))
     return dict(
         names=list(_data.keys()),
@@ -126,8 +126,8 @@ def _get_player_faction_stats(db: LadderDatabase, mod: str, season_id: str, prof
     )
 
 
-def _get_player_map_stats(db: LadderDatabase, mod: str, season_id: str, profile_id: str):
-    _data = db.get_player_map_stats(mod=mod, season_id=season_id, profile_id=profile_id)
+def _get_player_map_stats(db: LadderDatabase, mod: str, profile_id: str, season_id: Optional[str] = None):
+    _data = db.get_player_map_stats(mod=mod, profile_id=profile_id, season_id=season_id)
     hist = {}
     for map_title, stats in _data.items():
         clean_map_title = _stripped_map_name(map_title)
