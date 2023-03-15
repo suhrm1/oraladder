@@ -284,39 +284,45 @@ def player(profile_id):
     )
     app.logger.debug(f"Profile load time, get_player_season_history/other_seasons: {_now() - _start}")
 
-    if active_in_current_season:
-        _start = _now()
-        _cur_season = None if show_career_statistics else cur_period
+    if not active_in_current_season:
+        # We will display career statistics
+        show_career_statistics = True
 
-        if show_career_statistics:
-            # Take final rating at the end of each season, sort chronologically by season end date
-            rating_history = sorted(
-                [
-                    # 3-tuple: end_date, rating, season title
-                    (s["season"]["end"], s["rating"], s["season"]["title"])
-                    for s in _player["season_history"]
-                ],
-                key=lambda x: x[0],
-            )
-            rating_stats = dict(
-                # use season title as label
-                labels=list(map(lambda x: x[2], rating_history)),
-                data=list(map(lambda x: x[1], rating_history)),
-            )
-        else:
-            # get current season's ratings over time
-            rating_stats = _get_player_ratings(MainDB, mod=cur_mod, season_id=_cur_season, profile_id=profile_id)
-        app.logger.debug(f"Profile load time, _get_player_ratings: {_now() - _start}")
+    _start = _now()
+    _cur_season = None if show_career_statistics else cur_period
 
-        _start = _now()
-        faction_stats = _get_player_faction_stats(MainDB, mod=cur_mod, profile_id=profile_id, season_id=_cur_season)
-        app.logger.debug(f"Profile load time, _get_player_faction_stats: {_now() - _start}")
-
-        _start = _now()
-        map_stats = _get_player_map_stats(MainDB, mod=cur_mod, profile_id=profile_id, season_id=_cur_season)
-        app.logger.debug(f"Profile load time, _get_player_map_stats: {_now() - _start}")
+    if show_career_statistics:
+        # Take final rating at the end of each season, sort chronologically by season end date
+        rating_history = sorted(
+            [
+                # 3-tuple: end_date, rating, season title
+                (s["season"]["end"], s["rating"], s["season"]["title"])
+                for s in _player["season_history"]
+            ],
+            key=lambda x: x[0],
+        )
+        rating_stats = dict(
+            # use season title as label
+            labels=list(map(lambda x: x[2], rating_history)),
+            data=list(map(lambda x: x[1], rating_history)),
+        )
     else:
-        rating_stats, faction_stats, map_stats = None, None, None
+        # get current season's ratings over time
+        rating_stats = _get_player_ratings(MainDB, mod=cur_mod, season_id=_cur_season, profile_id=profile_id)
+
+    app.logger.debug(f"Profile load time, _get_player_ratings: {_now() - _start}")
+
+    _start = _now()
+    opponent_stats = MainDB.get_player_opponent_statistics(mod=cur_mod, player_id=profile_id, season_id=_cur_season)
+    app.logger.debug(f"Opponent stats load time, MainDB.get_player_opponent_statistics: {_now() - _start}")
+
+    _start = _now()
+    faction_stats = _get_player_faction_stats(MainDB, mod=cur_mod, profile_id=profile_id, season_id=_cur_season)
+    app.logger.debug(f"Profile load time, _get_player_faction_stats: {_now() - _start}")
+
+    _start = _now()
+    map_stats = _get_player_map_stats(MainDB, mod=cur_mod, profile_id=profile_id, season_id=_cur_season)
+    app.logger.debug(f"Profile load time, _get_player_map_stats: {_now() - _start}")
 
     ajax_url = url_for("player_games_js", profile_id=profile_id) + _args_url(
         show_career_statistics=show_career_statistics
@@ -328,6 +334,7 @@ def player(profile_id):
         player=_player,
         ajax_url=ajax_url,
         rating_stats=rating_stats,
+        opponent_stats=opponent_stats,
         faction_stats=faction_stats,
         map_stats=map_stats,
         mod_id=cur_mod,
