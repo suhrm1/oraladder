@@ -454,6 +454,48 @@ class LadderDatabase:
                 player_season_history[season.id] = stats
         return player_season_history
 
+    def get_player_opponent_statistics(
+        self,
+        mod: str,
+        player_id: int,
+        season_id: Optional[str] = None,
+    ):
+        if season_id is None:
+            # Condition to select statistics over all player games
+            condition1 = f"""profile_id0={player_id} AND "mod"='{mod}'"""
+            condition2 = f"""profile_id1={player_id} AND "mod"='{mod}'"""
+            table = "game"
+        else:
+            # Condition to select statistics for a specific season
+            condition1 = f"""profile_id0={player_id} AND "mod"='{mod}' AND season_id='{season_id}'"""
+            condition2 = f"""profile_id1={player_id} AND "mod"='{mod}' AND season_id='{season_id}'"""
+            table = "SeasonGames"
+
+        query = f"""SELECT
+            (SELECT DISTINCT profile_name FROM accounts WHERE profile_id=opponent_id) AS opponent_name,
+            opponent_id,
+            SUM(num_wins) + SUM(num_losses) AS played,
+            SUM(num_wins) AS wins,
+            SUM(num_losses) AS losses,
+            ROUND(CAST(SUM(num_wins) AS FLOAT) / (CAST(SUM(num_wins) + SUM(num_losses) AS FLOAT)) * 100, 2) AS win_rate
+            FROM
+            (
+                SELECT COUNT(`hash`) AS num_wins, 0 AS num_losses, profile_id1 AS opponent_id
+                    FROM {table}
+                    WHERE {condition1}
+                    GROUP BY profile_id1
+                UNION
+                SELECT 0 AS num_wins, COUNT(`hash`) AS num_losses, profile_id0 AS opponent_id
+                    FROM {table}
+                    WHERE {condition2}
+                    GROUP BY profile_id0
+            )
+            GROUP BY opponent_id
+            ORDER BY played DESC, win_rate DESC, opponent_name ASC"""
+
+        result: [sqlalchemy.engine.row.Row] = self.exec(query, fetch=True)
+        return [dict(r._mapping) for r in result]
+
     def update_player_season_history(self, mod_id: str, season_id: Optional[str] = None, season_group: str = "seasons"):
         player_query = f"SELECT DISTINCT profile_id FROM rating WHERE mod='{mod_id}'"
         if season_id is not None:

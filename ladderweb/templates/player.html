@@ -124,12 +124,14 @@
 {% else %}
 <div><p><strong>{{ player.profile_name }}</strong> has not played any ladder games for the selected mod.</p></div>
 {% endif %}
-{% if player.current_season %}
 
 {% if show_career_statistics is sameas true %}
+	{% if player.current_season %}
+	<!-- display the link back to selected season statistics if those are available -->
 	<h2 style="float: right; opacity: 0.4;">
 		<a href="{{ url_for('player', profile_id=player.profile_id, period=season_info.id, show_career_statistics=false) }}">show {{ season_info.title }}</a>
 	</h2>
+	{% endif %}
 	<h2 >Career statistics</h2>
 {% else %}
 	<h2 style="float: right; opacity: 0.4;">
@@ -137,6 +139,7 @@
 	</h2>
 	<h2>Season statistics: {{ season_info.title }}</h2>
 {% endif %}
+
 
 <h3>Latest games</h3>
 <table id="latest-player-games-table">
@@ -169,8 +172,45 @@ $(document).ready(
 		});
 	}
 );
-
 </script>
+
+
+<h3>Opponent Statistics</h3>
+<table id="opponentStats" class="display">
+	<thead>
+	<tr>
+		<th>Opponent</th>
+		<th>Total Games</th>
+		<th>Won</th>
+		<th>Lost</th>
+		<th>Win Rate</th>
+	</tr>
+	</thead>
+	<tbody>
+	{% for opponent in opponent_stats %}
+	<tr>
+		<td class="map"><a href="{{ url_for('player', profile_id=opponent.opponent_id) }}">{{ opponent.opponent_name }}</a></td>
+		<td>{{ opponent.played }}</td>
+		<td>{{ opponent.wins }}</td>
+		<td>{{ opponent.losses }}</td>
+		<td>{{ opponent.win_rate }}</td>
+	</tr>
+	{% endfor %}
+	</tbody>
+</table>
+<script>
+$(document).ready(
+	function () {
+		$('#opponentStats').dataTable(
+			{
+				"ordering": true,
+				"order": [[1, 'desc'], [4, 'desc'], [0, 'asc']],
+			}
+		);
+	}
+);
+</script>
+
 
 <h3>Rating evolution</h3>
 {%if rating_stats.data %}
@@ -194,6 +234,7 @@ $(document).ready(
 {%else%}
 <p>Not enough data points</p>
 {%endif%}
+
 
 <h3>Preferred factions</h3>
 <canvas id="faction_chart"></canvas>
@@ -225,6 +266,7 @@ $(document).ready(
 	});
 </script>
 
+
 <h3>Map performances</h3>
 <canvas id="playermaps_chart"></canvas>
 <script>
@@ -248,7 +290,5 @@ $(document).ready(
 		}
 	});
 </script>
-
-{% endif %}
 
 {% endblock %}
