@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% set active_page = "schedule" %}
+
+{% block title %}Latest games{% endblock %}
+
+{% block content %}
+
+<h2 id="teams">Registered Teams</h2>
+<ul>
+{% for team in teams %}
+	<li><strong>{{ team.name }}</strong> [{{ team.players[0].name }} & {{ team.players[1].name }}]</li>
+{% endfor %}
+</ul>
+<h2 id="schedule">Schedule</h2>
+<div>
+	<p>RATL matches are scheduled as follows. Playoffs are will determine the League winners until <strong>June 19th, 2023</strong>.
+	</p>
+</div>
+
+{% for caption, games in schedule.items() %}
+<h3>{{caption}}</h3>
+<table>
+	<thead>
+		<tr>
+			<th>Team 1</th>
+			<th>Team 2</th>
+			<th>Due</th>
+			<th>Status</th>
+		</tr>
+	</thead>
+	<tbody>
+		{% for game in games %}
+		<tr>
+			<td>{{ game[1] }}</td>
+			<td>{{ game[2] }}</td>
+			<td>{{ game[0] }}</td>
+			<td>{{ game[3] }}</td>
+		</tr>
+		{% endfor %}
+	</tbody>
+</table>
+{% endfor %}
+{% endblock %}
