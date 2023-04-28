@@ -34,6 +34,7 @@ from .forfeit_games import (
     get_forfeit_win_loss_stats,
 )
 from .playoffs import get_playoff2, get_playoff4, PlayoffOutcome
+from ladderweb.announcements import get_announcements
 
 
 def _db_get():
@@ -62,8 +63,9 @@ def create_app():
     app.config.from_mapping(
         DATABASE=db_path,
     )
-    cfg_file = os.environ.get("RAGL_CONFIG", op.join(app.instance_path, "ragl_config.py"))
+    cfg_file = os.environ.get("RAGL_CONFIG", app.instance_path + "/ragl_config.py")
     app.config.from_pyfile(cfg_file)
+    app.config.from_prefixed_env()
     app.teardown_appcontext(_db_close)
     return app
 
@@ -143,7 +145,14 @@ def scoreboards():
 
         scoreboards[division] = rows
 
-    return render_template("scoreboards.html", cfg=cfg, scoreboards=scoreboards)
+    return render_template(
+        "scoreboards.html",
+        cfg=cfg,
+        scoreboards=scoreboards,
+        announcements=get_announcements(
+            app.instance_path + "/" + app.config.get("ANNOUNCEMENTS_YAML_FILE", "announcements.yml")
+        ),
+    )
 
 
 def _get_games(db, outcomes_table, order="DESC"):
