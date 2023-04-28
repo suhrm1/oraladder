@@ -25,4 +25,11 @@
 	{%- endfor %}
 	</ul>
 </nav>
+{% if announcements %}
+<div class="announcement">
+	{% for date, msg in announcements %}
+		<strong>{{ date }}</strong>: {{ msg | safe }}<br>
+	{% endfor %}
+</div>
+{% endif %}
 {% block content %}{% endblock %}

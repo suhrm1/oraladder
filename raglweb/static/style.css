@@ -169,3 +169,11 @@ nav li a {
 nav li a:hover, nav li.active {
 	background-color: var(--color_hl);
 }
+
+div.announcement {
+    padding: 8px;
+    margin: 8px;
+    background-color: var(--color_hl);
+    color: var(--color_text0);
+    width: fit-content;
+}
