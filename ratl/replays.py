@@ -2,12 +2,13 @@ import hashlib
 import logging
 import os
 from datetime import datetime
+from typing import Tuple
 
 from laddertools.replay import _parse_game_info
 from ratl.player import get_player_info
 
 
-def parse_replays(replay_directory: str) -> (list[dict], list):
+def parse_replays(replay_directory: str, processed_files: list[str] = []) -> Tuple[dict, list]:
     logging.info(f"Parsing replays from {replay_directory}.")
     if not replay_directory.endswith("/"):
         replay_directory += "/"
@@ -17,19 +18,24 @@ def parse_replays(replay_directory: str) -> (list[dict], list):
         if os.path.isdir(replay_directory + f):
             subfolder = replay_directory + f + "/"
             logging.debug(f"Subfolder {f}, entering recursion")
-            replays.update(parse_replays(replay_directory=subfolder))
+            parsed_replays, parsed_files = parse_replays(replay_directory=subfolder, processed_files=processed_files)
+            replays.update(parsed_replays)
+            processed_files += parsed_files
         elif f.endswith(".orarep"):
             filename = os.path.join(replay_directory, f)
+            if filename in processed_files:
+                continue
             replay_id = hashlib.sha1(filename.encode()).hexdigest()
             try:
                 with open(filename, "rb") as file:
                     game_data = _parse_game_info(file)
                     game_data["filename"] = filename
                     replays[replay_id] = game_data
+                processed_files.append(filename)
             except Exception as e:
                 logging.warning(f"Error parsing {filename}: {e}")
 
-    return replays
+    return replays, processed_files
 
 
 def filter_valid_teamgames(replays: dict, teams: dict, fingerprints: dict = {}) -> (dict, dict):

@@ -22,15 +22,57 @@ def _prepare_game_list() -> list:
     will be parsed on every run. Consider caching replay data into a JSON file if this becomes a bottleneck.
     """
     player_db_file = os.path.join(config["config_folder"], "players.json")
+    replay_db_file = os.path.join(config["config_folder"], "replays.json")
+
+    cached_replays = load_json_cache(replay_db_file)
+    processed_files = [g["filename"] for g in cached_replays.values()] if cached_replays else []
+    print(f"processed_files: {processed_files}")
+    parsed_replays, _ = parse_replays(config["replay_folder"], processed_files)
+    cached_replays.update(parsed_replays)
+    save_json_cache(replay_db_file, cached_replays)
+
     players = load_json_cache(player_db_file)
-    replays = parse_replays(config["replay_folder"])
-    valid_replays, players = filter_valid_teamgames(replays, config["teams"], fingerprints=players)
+    valid_replays, players = filter_valid_teamgames(cached_replays, config["teams"], fingerprints=players)
     save_json_cache(player_db_file, players)
 
     game_results = game_info(valid_replays, config["teams"], players)
-    # ToDo: sort by endtime
-    # game_results.sort(key=lambda game: game["end_time"])
+    game_results.sort(key=lambda game: game["end_time"], reverse=True)
     return game_results
+
+
+def _check_scheduled_game_status(schedule: dict):
+    games = _prepare_game_list()
+    completed_games_per_team = {}
+    for g in games:
+        t1 = g["team1"]["name"]
+        t2 = g["team2"]["name"]
+        if t1 in completed_games_per_team.keys():
+            if t2 in completed_games_per_team[t1]:
+                completed_games_per_team[t1][t2] += 1
+            else:
+                completed_games_per_team[t1][t2] = 1
+        else:
+            completed_games_per_team[t1] = {t2: 1}
+        if t2 in completed_games_per_team.keys():
+            if t1 in completed_games_per_team[t2]:
+                completed_games_per_team[t2][t1] += 1
+            else:
+                completed_games_per_team[t2][t1] = 1
+        else:
+            completed_games_per_team[t2] = {t1: 1}
+
+    for week in schedule:
+        for k, pairing in enumerate(schedule[week]):
+            t1 = pairing[1]
+            t2 = pairing[2]
+            try:
+                status = f"{str(completed_games_per_team[t1][t2])}/2 completed"
+                row = list(pairing)
+                row[3] = status
+                schedule[week][k] = tuple(row)
+            except Exception as e:
+                pass
+    return schedule
 
 
 @app.route("/")
@@ -51,7 +93,8 @@ def schedule():
         for teamname, players in config["teams"].items()
     ]
     schedule = config["schedule"]
-    # ToDo: determine which games have been completed...
+    schedule = _check_scheduled_game_status(schedule)
+
     return render_template("schedule.html", teams=teams, schedule=schedule)
 
 

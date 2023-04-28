@@ -11,14 +11,13 @@ for key, default_value in config.items():
 config["teams"] = {
     "Gruesome Twosome": [17239, 12760],  # Fazzar & MASTER
     "Team 2nd Place": [6430, 6748],  # Blackened & Orb
-    "Many Names": [16401, 9156],  # Margot, Radical Centrist
+    "NoobRush Buffoons": [16401, 9156],  # Margot, Radical Centrist
     "Hawkalypse": [18246, 13710],  # Creo, Mint
     "Pitchfork Penguins": [15899, 16066],  # Tux & Milkman
     "CrackheadHONKerz420": [17607, 15266],  # Holk, JockoChillink/cracksmoka420
     "Careless Cucks": [6771, 11855],  # Bain, Kaution
     "Team name": [3952, 7304],  # Anjew, Upps
-    # "Testteam 1": [8860, 16401],  # moods / margot
-    # "Testteam 2": [15899, 13710],  # Tux & Milkman
+    "Fashionably late": [13705, 8031],  # Kav, Stitch
 }
 
 config["player_names"] = {
@@ -38,6 +37,8 @@ config["player_names"] = {
     11855: "Kaution",
     3952: "Anjew",
     7304: "Upps",
+    8031: "Stitch",
+    13705: "Kav",
     # 8860: "moods",
 }
 
@@ -46,38 +47,48 @@ config["schedule"] = {
         ("2023-04-30", "CrackheadHONKerz420", "Gruesome Twosome", ""),
         ("2023-04-30", "Team name", "Team 2nd Place", ""),
         ("2023-04-30", "Pitchfork Penguins", "Careless Cucks", ""),
-        ("2023-04-30", "Many Names ", "Hawkalypse", ""),
+        ("2023-04-30", "NoobRush Buffoons ", "Hawkalypse", ""),
     ],
     "Week 2": [
-        ("2023-05-07", "Hawkalypse", "Team name", ""),
-        ("2023-05-07", "Careless Cucks", "Gruesome Twosome", ""),
-        ("2023-05-07", "Team 2nd Place", "CrackheadHONKerz420", ""),
-        ("2023-05-07", "Many Names", "Pitchfork Penguins", ""),
         ("2023-05-07", "CrackheadHONKerz420", "Careless Cucks", ""),
-        ("2023-05-07", "Team 2nd Place", "Hawkalypse", ""),
-        ("2023-05-07", "Gruesome Twosome", "Many Names", ""),
-        ("2023-05-07", "Team name", "Pitchfork Penguins", ""),
+        ("2023-05-07", "Hawkalyypse", "Pitchfork Penguins", ""),
+        ("2023-05-07", "Fashionably late", "Team name", ""),
+        ("2023-05-07", "Pitchfork Penguins", "NoobRush Buffoons", ""),
+        ("2023-05-07", "Fashionably late", "Gruesome Twosome", ""),
+        ("2023-05-07", "Gruesome Twosome", "Team name", ""),
     ],
     "Week 3": [
-        ("2023-05-14", "Hawkalypse", "CrackheadHONKerz420", ""),
-        ("2023-05-14", "Team 2nd Place", "Pitchfork Penguins", ""),
-        ("2023-05-14", "Gruesome Twosome", "Team name", ""),
-        ("2023-05-14", "Careless Cucks", "Many Names", ""),
+        ("2023-05-14", "Careless Cucks", "Team name", ""),
+        ("2023-05-14", "Pitchfork Penguins", "CrackheadHONKerz420", ""),
+        ("2023-05-14", "Hawkalypse", "Team 2nd Place", ""),
+        ("2023-05-14", "Gruesome Twosome", "NoobRush Buffoons", ""),
+        ("2023-05-14", "Gruesome Twosome", "Careless Cucks", ""),
+        ("2023-05-14", "Hawkalypse", "Fashionably late", ""),
+        ("2023-05-14", "Fashionably late", "Team 2nd Place", ""),
     ],
     "Week 4": [
-        ("2023-05-21", "CrackheadHONKerz420", "Many Names", ""),
-        ("2023-05-21", "Hawkalypse", "Pitchfork Penguins", ""),
-        ("2023-05-21", "Careless Cucks", "Team name", ""),
+        ("2023-05-21", "Careless Cucks", "Fashionably late", ""),
+        ("2023-05-21", "Fashionably late", "Pitchfork Penguins", ""),
+        ("2023-05-21", "CrackheadHONKerz420", "Team name", ""),
+        ("2023-05-21", "NoobRush Buffoons", "Careless Cucks", ""),
+        ("2023-05-21", "Team name", "NoobRush Buffoons", ""),
         ("2023-05-21", "Team 2nd Place", "Gruesome Twosome", ""),
-        ("2023-05-21", "Team name", "Many Names", ""),
-        ("2023-05-21", "Gruesome Twosome", "Hawkalypse", ""),
-        ("2023-05-21", "Team 2nd Place", "Careless Cucks", ""),
-        ("2023-05-21", "Pitchfork Penguins", "CrackheadHONKerz420", ""),
     ],
     "Week 5": [
-        ("2023-05-28", "CrackheadHONKerz420", "Team name", ""),
-        ("2023-05-28", "Pitchfork Penguins", "Gruesome Twosome", ""),
-        ("2023-05-28", "Many Names", "Team 2nd Place", ""),
-        ("2023-05-28", "Hawkalypse", "Careless Cucks", ""),
+        ("2023-05-28", "Team 2nd Place", "Careless Cucks", ""),
+        ("2023-05-28", "NoobRush Buffoons", "CrackheadHONKerz420", ""),
+        ("2023-05-28", "Fashionably late", "NoobRush Buffoons", ""),
+        ("2023-05-28", "Hawkalypse", "CrackheadHONKerz420", ""),
+        ("2023-05-28", "Team name", "Pitchfork Penguins", ""),
+        ("2023-05-28", "Gruesome Twosome", "Hawkalypse", ""),
+        ("2023-05-28", "Team 2nd Place", "Pitchfork Penguins", ""),
+    ],
+    "Week 6": [
+        ("2023-06-04", "CrackheadHONKerz420", "Fashionably late", ""),
+        ("2023-06-04", "Team 2nd Place", "CrackheadHONKerz420", ""),
+        ("2023-06-04", "Team 2nd Place", "NoobRush Buffoons", ""),
+        ("2023-06-04", "Careless Cucks", "Hawkalypse", ""),
+        ("2023-06-04", "Hawkalypse", "Team name", ""),
+        ("2023-06-04", "Pitchfork Penguins", "Gruesome Twosome", ""),
     ],
 }

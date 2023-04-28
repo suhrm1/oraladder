@@ -6,7 +6,7 @@ def load_json_cache(filename: str) -> dict:
     try:
         with open(filename, "r", encoding="UTF-8") as content:
             payload = json.loads(content.read())
-            return payload
+            return payload if payload else {}
     except Exception as e:
         logging.warning(e)
         return {}
