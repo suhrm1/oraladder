@@ -16,6 +16,7 @@ ADD ./raglweb ./raglweb
 ADD ./Makefile ./
 ADD ./MANIFEST.in ./
 ADD ./setup.py ./
+ADD ./requirements.txt ./
 ADD ./LICENSE ./
 
 RUN chown openra: -R /home/openra
