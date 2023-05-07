@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% set active_page = "scoreboards" %}
+
+{% block title %}Scoreboard{% endblock %}
+
+{% block content %}
+<h2>Current Standings</h2>
+<table>
+	<thead>
+		<tr>
+			<th>Rank</th>
+			<th>Team</th>
+			<th>Played</th>
+			<th>Wins</th>
+			<th>Losses</th>
+			<th>Win rate</th>
+			<th>Status</th>
+		</tr>
+	</thead>
+	<tbody>
+		{%- for e in teams %}
+		<tr>
+			<td class="position">{{ e.rank }}</td>
+			<td class="player">{{ e.name }}</td>
+			<td>{{ e.played }}/{{ e.max_matches }}</td>
+			<td>{{ e.wins }}</td>
+			<td>{{ e.losses }}</td>
+			<td>{{ '%.1f' | format(e.winrate) }}%</td>
+			<td>{{ e.status }}</td>
+		</tr>
+		{%- endfor %}
+	</tbody>
+</table>
+{% endblock %}

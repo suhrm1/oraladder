@@ -1,3 +1,4 @@
+import json
 import os
 from flask import Flask, jsonify, render_template, send_file, redirect
 from .config import config
@@ -70,21 +71,12 @@ def _check_scheduled_game_status(schedule: dict):
                 row = list(pairing)
                 row[3] = status
                 schedule[week][k] = tuple(row)
-            except Exception as e:
+            except KeyError as e:
                 pass
     return schedule
 
 
 @app.route("/")
-@app.route("/games")
-def games():
-    game_results = _prepare_game_list()
-    # replace winning team reference with actual team name
-    for game in game_results:
-        game["result"] = game["team1"]["name"] if game["result"] == "team1" else game["team2"]["name"]
-    return render_template("games.html", games=game_results)
-
-
 @app.route("/schedule")
 def schedule():
     player_names = config["player_names"]
@@ -96,6 +88,58 @@ def schedule():
     schedule = _check_scheduled_game_status(schedule)
 
     return render_template("schedule.html", teams=teams, schedule=schedule)
+
+
+@app.route("/games")
+def games():
+    game_results = _prepare_game_list()
+    # replace winning team reference with actual team name
+    for game in game_results:
+        game["result"] = game["team1"]["name"] if game["result"] == "team1" else game["team2"]["name"]
+    return render_template("games.html", games=game_results)
+
+
+@app.route("/scoreboards")
+def scoreboards():
+    player_names = config["player_names"]
+    teams = [
+        {"name": teamname, "players": [{"profile_id": pid, "name": player_names[pid]} for pid in players]}
+        for teamname, players in config["teams"].items()
+    ]
+    game_results = _prepare_game_list()
+    scores = []
+    max_games = (len(teams) - 1) * 2
+    for team in teams:
+        wins = 0
+        losses = 0
+        print(team["name"])
+        for game in game_results:
+            game["result"] = game["team1"]["name"] if game["result"] == "team1" else game["team2"]["name"]
+            if team["name"] in [game["team1"]["name"], game["team2"]["name"]]:
+                if team["name"] == game["result"]:
+                    wins += 1
+                else:
+                    losses += 1
+        scores.append(
+            {
+                "rank": 0,
+                "name": f"""{team["name"]} [{team["players"][0]["name"]} & {team["players"][1]["name"]}]""",
+                "played": wins + losses,
+                "max_matches": max_games,
+                "wins": wins,
+                "losses": losses,
+                "winrate": wins * 100 / (wins + losses) if wins else 0.0,
+                "status": "",
+            }
+        )
+
+    scores.sort(key=lambda x: x["played"], reverse=True)
+    scores.sort(key=lambda x: x["winrate"], reverse=True)
+    scores.sort(key=lambda x: x["wins"], reverse=True)
+    for rank, team in enumerate(scores, 1):
+        team.update({"rank": rank})
+
+    return render_template("scoreboards.html", teams=scores)
 
 
 @app.route("/replay/<replay_hash>")

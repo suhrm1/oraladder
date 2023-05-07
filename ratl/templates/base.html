@@ -13,8 +13,9 @@
 	<ul>
 	{%-
 	set navbar_menus = [
-		('games', 'Games'),
 		('schedule', 'Schedule'),
+		('games', 'Games'),
+		('scoreboards', 'Scoreboards'),
 	]
 	-%}
 	{%- for endpoint, caption in navbar_menus %}
@@ -23,7 +24,8 @@
 		</li>
 	{%- endfor %}
 		<li>
-			<a href="{{ url_for('static', filename='ratl_s02_mappack.zip') }}"> Download Maps</a>
+			<a href="{{ url_for('static', filename='ratl_s02_mappack.zip') }}"
+			   style="background-color: unset;">📥 Download Maps</a>
 		</li>
 	</ul>
 </nav>
