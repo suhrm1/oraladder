@@ -51,7 +51,7 @@ config["schedule"] = {
     ],
     "Week 2": [
         ("2023-05-07", "CrackheadHONKerz420", "Careless Cucks", ""),
-        ("2023-05-07", "Hawkalyypse", "Pitchfork Penguins", ""),
+        ("2023-05-07", "Hawkalypse", "Pitchfork Penguins", ""),
         ("2023-05-07", "Fashionably late", "Team name", ""),
         ("2023-05-07", "Pitchfork Penguins", "NoobRush Buffoons", ""),
         ("2023-05-07", "Fashionably late", "Gruesome Twosome", ""),
