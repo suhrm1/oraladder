@@ -112,11 +112,10 @@ def scoreboards():
     for team in teams:
         wins = 0
         losses = 0
-        print(team["name"])
         for game in game_results:
-            game["result"] = game["team1"]["name"] if game["result"] == "team1" else game["team2"]["name"]
+            winners = game["team1"]["name"] if game["result"] == "team1" else game["team2"]["name"]
             if team["name"] in [game["team1"]["name"], game["team2"]["name"]]:
-                if team["name"] == game["result"]:
+                if team["name"] == winners:
                     wins += 1
                 else:
                     losses += 1
