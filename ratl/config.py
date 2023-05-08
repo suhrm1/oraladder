@@ -15,7 +15,8 @@ config["teams"] = {
     "Hawkalypse": [18246, 13710],  # Creo, Mint
     "Pitchfork Penguins": [15899, 16066],  # Tux & Milkman
     "CrackheadHONKerz420": [17607, 15266],  # Holk, JockoChillink/cracksmoka420
-    "Careless Cucks": [6771, 11855],  # Bain, Kaution
+    # "Careless Cucks": [6771, 11855],  # Bain, Kaution
+    "Hi, we are new": [8494, 8860],  # Widow, moods
     "Team name": [3952, 7304],  # Anjew, Upps
     "Fashionably late": [13705, 8031],  # Kav, Stitch
 }
@@ -39,18 +40,19 @@ config["player_names"] = {
     7304: "Upps",
     8031: "Stitch",
     13705: "Kav",
-    # 8860: "moods",
+    8494: "Widow",
+    8860: "moods",
 }
 
 config["schedule"] = {
     "Week 1": [
         ("2023-04-30", "CrackheadHONKerz420", "Gruesome Twosome", ""),
         ("2023-04-30", "Team name", "Team 2nd Place", ""),
-        ("2023-04-30", "Pitchfork Penguins", "Careless Cucks", ""),
+        ("2023-04-30", "Pitchfork Penguins", "Hi, we are new", ""),
         ("2023-04-30", "NoobRush Buffoons", "Hawkalypse", ""),
     ],
     "Week 2": [
-        ("2023-05-07", "CrackheadHONKerz420", "Careless Cucks", ""),
+        ("2023-05-07", "CrackheadHONKerz420", "Hi, we are new", ""),
         ("2023-05-07", "Hawkalypse", "Pitchfork Penguins", ""),
         ("2023-05-07", "Fashionably late", "Team name", ""),
         ("2023-05-07", "Pitchfork Penguins", "NoobRush Buffoons", ""),
@@ -58,24 +60,24 @@ config["schedule"] = {
         ("2023-05-07", "Gruesome Twosome", "Team name", ""),
     ],
     "Week 3": [
-        ("2023-05-14", "Careless Cucks", "Team name", ""),
+        ("2023-05-14", "Hi, we are new", "Team name", ""),
         ("2023-05-14", "Pitchfork Penguins", "CrackheadHONKerz420", ""),
         ("2023-05-14", "Hawkalypse", "Team 2nd Place", ""),
         ("2023-05-14", "Gruesome Twosome", "NoobRush Buffoons", ""),
-        ("2023-05-14", "Gruesome Twosome", "Careless Cucks", ""),
+        ("2023-05-14", "Gruesome Twosome", "Hi, we are new", ""),
         ("2023-05-14", "Hawkalypse", "Fashionably late", ""),
         ("2023-05-14", "Fashionably late", "Team 2nd Place", ""),
     ],
     "Week 4": [
-        ("2023-05-21", "Careless Cucks", "Fashionably late", ""),
+        ("2023-05-21", "Hi, we are new", "Fashionably late", ""),
         ("2023-05-21", "Fashionably late", "Pitchfork Penguins", ""),
         ("2023-05-21", "CrackheadHONKerz420", "Team name", ""),
-        ("2023-05-21", "NoobRush Buffoons", "Careless Cucks", ""),
+        ("2023-05-21", "NoobRush Buffoons", "Hi, we are new", ""),
         ("2023-05-21", "Team name", "NoobRush Buffoons", ""),
         ("2023-05-21", "Team 2nd Place", "Gruesome Twosome", ""),
     ],
     "Week 5": [
-        ("2023-05-28", "Team 2nd Place", "Careless Cucks", ""),
+        ("2023-05-28", "Team 2nd Place", "Hi, we are new", ""),
         ("2023-05-28", "NoobRush Buffoons", "CrackheadHONKerz420", ""),
         ("2023-05-28", "Fashionably late", "NoobRush Buffoons", ""),
         ("2023-05-28", "Hawkalypse", "CrackheadHONKerz420", ""),
@@ -87,7 +89,7 @@ config["schedule"] = {
         ("2023-06-04", "CrackheadHONKerz420", "Fashionably late", ""),
         ("2023-06-04", "Team 2nd Place", "CrackheadHONKerz420", ""),
         ("2023-06-04", "Team 2nd Place", "NoobRush Buffoons", ""),
-        ("2023-06-04", "Careless Cucks", "Hawkalypse", ""),
+        ("2023-06-04", "Hi, we are new", "Hawkalypse", ""),
         ("2023-06-04", "Hawkalypse", "Team name", ""),
         ("2023-06-04", "Pitchfork Penguins", "Gruesome Twosome", ""),
     ],
