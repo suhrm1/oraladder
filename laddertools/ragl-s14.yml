@@ -30,7 +30,8 @@ Divisions:
         - [16401, Margot Honecker]
         - [12022, Rossie]
 
-#Forfeit:
+Forfeit:
+    - 11442
 
 #Forfeit_Games:
     # - [ winner_id, loser_id, decision date (YYYY-MM-DD), reason ]
