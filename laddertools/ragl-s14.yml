@@ -32,6 +32,7 @@ Divisions:
 
 Forfeit:
     - 11442
+    - 6771
 
 #Forfeit_Games:
     # - [ winner_id, loser_id, decision date (YYYY-MM-DD), reason ]
