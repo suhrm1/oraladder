@@ -8,6 +8,9 @@ config = dict(
 for key, default_value in config.items():
     config[key] = os.getenv(key, default=default_value)
 
+config["league_title_short"] = "RATL"
+config["season"] = 2
+
 config["teams"] = {
     "Gruesome Twosome": [17239, 12760],  # Fazzar & MASTER
     "Team 2nd Place": [6430, 6748],  # Blackened & Orb

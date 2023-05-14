@@ -146,9 +146,13 @@ def replay(replay_hash):
     games = _prepare_game_list()
     for g in games:
         if g["replay_id"] == replay_hash:
+            league = config["league_title_short"]
+            season = config["season"]
+            prefix = f"{league}-S{season:02d}-"
+
             fullpath = g["filename"]
             original_filename = os.path.basename(fullpath)
-            attachment_filename = original_filename
+            attachment_filename = prefix + original_filename
             return send_file(fullpath, as_attachment=True, download_name=attachment_filename)
     return redirect("/")
 
