@@ -1,5 +1,3 @@
-import glob
-import json
 import os
 from flask import Flask, jsonify, render_template, send_file, redirect
 from .config import config
@@ -28,7 +26,6 @@ def _prepare_game_list() -> list:
 
     cached_replays = load_json_cache(replay_db_file)
     processed_files = [g["filename"] for g in cached_replays.values()] if cached_replays else []
-    print(f"processed_files: {processed_files}")
     parsed_replays, _ = parse_replays(config["replay_folder"], processed_files)
     cached_replays.update(parsed_replays)
     save_json_cache(replay_db_file, cached_replays)
