@@ -1,3 +1,4 @@
+import glob
 import json
 import os
 from flask import Flask, jsonify, render_template, send_file, redirect
@@ -150,7 +151,7 @@ def replay(replay_hash):
             season = config["season"]
             prefix = f"{league}-S{season:02d}-"
 
-            fullpath = g["filename"]
+            fullpath = os.path.join(os.getcwd(), g["filename"])
             original_filename = os.path.basename(fullpath)
             attachment_filename = prefix + original_filename
             return send_file(fullpath, as_attachment=True, download_name=attachment_filename)
