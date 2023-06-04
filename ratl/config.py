@@ -24,6 +24,11 @@ config["teams"] = {
     "Fashionably late": [13705, 8031],  # Kav, Stitch
 }
 
+config["subs"] = {
+    "Team 2nd Place": [6793],  # Unano
+    "NoobRush Buffoons": [15899],  # Tux
+}
+
 config["player_names"] = {
     17239: "Fazzar",
     12760: "MASTER",
@@ -45,6 +50,7 @@ config["player_names"] = {
     13705: "Kav",
     8494: "Widow",
     8860: "moods",
+    6793: "Unano",
 }
 
 config["schedule"] = {

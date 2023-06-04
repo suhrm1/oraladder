@@ -40,7 +40,19 @@ def parse_replays(replay_directory: str, processed_files: list[str] = []) -> Tup
 
 def filter_valid_teamgames(replays: dict, teams: dict, fingerprints: dict = {}) -> (dict, dict):
     valid_replays = {}
+
+    # We need to account for potential substitute players in teams.
+    # If any teams has more than 3 players assigned, split them into tuples of 2.
     team_tuples = [set(team) for team in teams.values()]
+    for i, team in enumerate(team_tuples):
+        team = list(team)
+        if len(team) > 2:
+            while len(team) > 2:
+                team_tuples.append({team[0], team[2]})
+                team_tuples.append({team[1], team[2]})
+                team.remove(team[2])
+            team_tuples[i] = set(team)
+
     for replay_id, replay in replays.items():
         t1 = []
         t2 = []
@@ -58,7 +70,7 @@ def filter_valid_teamgames(replays: dict, teams: dict, fingerprints: dict = {}) 
         elif set(t1) in team_tuples and set(t2) in team_tuples:
             valid_replays[replay_id] = replay
         else:
-            logging.warning(f"Invalid team")
+            logging.warning(f"Invalid team: {t1} / {t2}")
 
     return valid_replays, fingerprints
 

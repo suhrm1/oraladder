@@ -15,6 +15,18 @@ if not config["config_folder"]:
     config["config_folder"] = os.path.join(app.instance_path)
 
 
+def _add_substitute_players_to_teams(teams: dict, subs: dict = {}) -> dict:
+    """Add potential substitute player ID to the dict of teams."""
+    if not subs:
+        return teams
+    else:
+        update_teams = teams.copy()
+        for team_name in subs:
+            if team_name in update_teams:
+                update_teams[team_name] = list(set(update_teams[team_name]) | set(subs[team_name]))
+        return update_teams
+
+
 def _prepare_game_list() -> list:
     """Parses replays, fetches player account data (if necessary), and filters out valid games
 
@@ -31,10 +43,11 @@ def _prepare_game_list() -> list:
     save_json_cache(replay_db_file, cached_replays)
 
     players = load_json_cache(player_db_file)
-    valid_replays, players = filter_valid_teamgames(cached_replays, config["teams"], fingerprints=players)
+    teams = _add_substitute_players_to_teams(config["teams"], config["subs"])
+    valid_replays, players = filter_valid_teamgames(cached_replays, teams, fingerprints=players)
     save_json_cache(player_db_file, players)
 
-    game_results = game_info(valid_replays, config["teams"], players)
+    game_results = game_info(valid_replays, teams, players)
     game_results.sort(key=lambda game: game["end_time"], reverse=True)
     return game_results
 
