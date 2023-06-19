@@ -39,4 +39,11 @@ Forfeit:
 #Forfeit_Games:
     # - [ winner_id, loser_id, decision date (YYYY-MM-DD), reason ]
 
-#Playoffs:
+Playoffs:
+    Masters:
+        bestof: 5
+        players:
+            - 18246
+            - 13705
+            - 17239
+            - 6430
