@@ -106,7 +106,10 @@ def games():
     game_results = _prepare_game_list()
     # replace winning team reference with actual team name
     for game in game_results:
-        game["result"] = game["team1"]["name"] if game["result"] == "team1" else game["team2"]["name"]
+        if "result" in game:
+            game["result"] = game["team1"]["name"] if game["result"] == "team1" else game["team2"]["name"]
+        else:
+            game["result"] = "Unknown"
     return render_template("games.html", games=game_results)
 
 
