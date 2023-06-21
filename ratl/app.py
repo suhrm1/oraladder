@@ -106,7 +106,12 @@ def games():
     game_results = _prepare_game_list()
     # replace winning team reference with actual team name
     for game in game_results:
-        game["result"] = game["team1"]["name"] if game["result"] == "team1" else game["team2"]["name"]
+        if "result" in game:
+            game["result"] = game["team1"]["name"] if game["result"] == "team1" else game["team2"]["name"]
+        else:
+            # Override in case we have a replay with all players disconnecting.
+            # A replay like that should be removed but this prevents the website from breaking.
+            game["result"] = "Unknown"
     return render_template("games.html", games=game_results)
 
 
@@ -124,7 +129,13 @@ def scoreboards():
         wins = 0
         losses = 0
         for game in game_results:
-            winners = game["team1"]["name"] if game["result"] == "team1" else game["team2"]["name"]
+            if wins + losses >= max_games:
+                # ignore games that extend the group stages
+                break
+            if "result" in game:
+                winners = game["team1"]["name"] if game["result"] == "team1" else game["team2"]["name"]
+            else:
+                winners = "Unknown"
             if team["name"] in [game["team1"]["name"], game["team2"]["name"]]:
                 if team["name"] == winners:
                     wins += 1

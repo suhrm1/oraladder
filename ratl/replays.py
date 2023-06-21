@@ -99,8 +99,11 @@ def game_info(replays: dict, team_config: dict, players: dict) -> list:
                     faction=value["FactionName"],
                     faction_random=value["IsRandomFaction"],
                 )
+                # Collect game result: either by finding a winning team member or losing team member
                 if value["Outcome"] == "Won":
                     game["result"] = "team" + str(team_id)
+                elif value["Outcome"] == "Lost":
+                    game["result"] = "team" + str((team_id + 1) % 2)
             elif str(key).startswith("Root"):
                 game["start_time"] = datetime.strptime(value["StartTimeUtc"], "%Y-%m-%d %H-%M-%S")
                 game["end_time"] = datetime.strptime(value["EndTimeUtc"], "%Y-%m-%d %H-%M-%S")
