@@ -7,6 +7,32 @@ mods = dict(
         # supports_analysis=True,
         mappacks=(
             dict(
+                label="2023.2 (2023-07-01)",
+                filename="ladder-map-pack-2023.2.zip",
+                changelog="""
+                    New map pack to start of RA Ladder season 19. Features some all-new maps as well as beloved classics
+                    from past Red Alert Global League seasons, all updated to latest Balance patch,
+                    <a href="https://github.com/tttppp/ora-balance-iteration/blob/3.6/CHANGELOG.md#36" target="_blank">v3.6</a>.
+                """,
+                maps=(
+                    ("A Gardens 1vs1", "J MegaTank"),
+                    ("Algeria", "Pinkthoth"),
+                    ("Borrowed Time", "Omnom"),
+                    ("Enthrall", "Blackened"),
+                    ("Lonely Land", "Blackened"),
+                    ("Megara", "Pinkthoth"),
+                    ("Nachtlicht", "Blackened"),
+                    ("River of Blood", "Lad"),
+                    ("Scorched Earth II", "J MegaTank"),
+                    ("Shadegrown", "Pinkthoth"),
+                    ("Snake Woods", "Pinkthoth"),
+                    ("Two Towns", "Blackened"),
+                    ("The Space Between", "Blackened"),
+                    ("The Great Divide", "SoScared"),
+                    ("Woodlands", "Lad"),
+                ),
+            ),
+            dict(
                 label="2023.1 (2023-03-05)",
                 filename="ladder-map-pack-2023.1.zip",
                 changelog="""
