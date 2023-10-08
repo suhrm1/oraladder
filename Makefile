@@ -2,7 +2,7 @@ PYTHON ?= python3
 CURL   ?= curl
 VENV   ?= venv
 
-RAGL_MAP_POOL = misc/map-pools/ragl-s13.maps
+RAGL_MAP_POOL = misc/map-pools/ragl-s14.maps
 RAGL_MAP_PACK_VERSION := $(shell $(PYTHON) misc/ragl_config.py MAP_PACK_VERSION)
 RAGL_MAP_PACK = raglweb/static/ragl-map-pack-$(RAGL_MAP_PACK_VERSION).zip
 
@@ -55,7 +55,7 @@ initragldev: $(VENV) $(RAGL_MAP_PACK) instance/db-ragl.sqlite3 instance/ragl_con
 inittdgldev: $(VENV) $(TDGL_MAP_PACK) instance/db-tdgl.sqlite3 instance/tdgl_config.py
 
 instance/db-ragl.sqlite3: instance
-	$(VENV)/bin/ora-ragl -d $@ -p ../oraladder/laddertools/ragl-s13.yml
+	$(VENV)/bin/ora-ragl -d $@ -p ../oraladder/laddertools/ragl-s14.yml
 
 instance/db-tdgl.sqlite3: instance
 	$(VENV)/bin/ora-ragl -d $@ -p ../oraladder/laddertools/tdgl-s03.yml

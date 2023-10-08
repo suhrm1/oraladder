@@ -1,0 +1,66 @@
+# Warning: This file is standard YAML, *not* in OpenRA mini-yaml
+
+Divisions:
+
+    Masters:
+        - [13705, Kav]
+        - [17239, Fazzar]
+        - [6793, maceman]
+        - [13710, Ekanim]
+        - [6430, Blackened]
+        - [18246, creo]
+        - [5292, Mo]
+        - [11442, Eugenator]
+        - [10588, JustSomeGuy]
+        - [11913, Duke Bones]
+        - [8869, Sigil]
+        - [3952, anjew]
+
+    Minions:
+        - [9156, toiletbreakbrb]
+        - [7304, Upps]
+        - [6771, Mr Cloudy]
+        - [16066, milkman]
+        - [15899, tux]
+        - [7714, Nilhall]
+        - [6881, spetsnaz84]
+        - [17607, BigHALK]
+        - [7387, TTTPPP]
+        - [14769, chouchani]
+        - [16401, Margot Honecker]
+        - [12022, Rossie]
+
+Forfeit:
+    - 11442
+    - 6771
+    - 10588
+    - 9156
+
+#Forfeit_Games:
+    # - [ winner_id, loser_id, decision date (YYYY-MM-DD), reason ]
+
+Playoffs:
+
+    Masters Final:
+        bestof: 5
+        players:
+            - 13705
+            - 6430
+
+    Masters Semi Final I:
+        bestof: 5
+        players:
+            - 17239
+            - 13705
+
+    Masters Semi Final II:
+        bestof: 3
+        players:
+            - 18246
+            - 6430
+
+    Masters Bronze Medal Decision Match:
+        bestof: 5
+        players:
+            - 17239
+            - 6793
