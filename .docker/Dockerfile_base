@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM python:3.11
 
 RUN useradd -m -s /bin/bash openra \
     && apt-get update && apt-get install -y --no-install-recommends make curl nano sqlite3 \
@@ -16,6 +16,7 @@ ADD ./raglweb ./raglweb
 ADD ./Makefile ./
 ADD ./MANIFEST.in ./
 ADD ./setup.py ./
+ADD ./requirements.txt ./
 ADD ./LICENSE ./
 
 RUN chown openra: -R /home/openra

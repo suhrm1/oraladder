@@ -1,0 +1,34 @@
+# Warning: This file is standard YAML, *not* in OpenRA mini-yaml
+
+Divisions:
+
+    Masters:
+        - [ 13705, Kav ]
+        - [ 17239, Fazzz ]
+        - [ 6430, Blackened ]
+        - [ 7304, Upps ]
+        - [ 15469, not happy ]
+        - [ 6793, maceman ]
+        - [ 15899, tux ]
+        - [ 8860, ROCKhardFISTnips ]
+        - [ 3952, anjew ]
+        - [ 6771, Mr Cloudy ]
+        - [ 5292, Mo ]
+        - [ 16066, milkman ]
+
+    Minions:
+        - [ 11913, Duke Bones ]
+        - [ 7714, Nilhall ]
+        - [ 15428, bete ]
+        - [ 17607, BigHALK ]
+        - [ 18968, Nightingale ]
+        - [ 7387, TTTPPP ]
+        - [ 14769, chouchani ]
+        - [ 6751, Tailix Killa Mentor ]
+        - [ 18359, goldie ]
+        - [ 18864, fiwo ]
+        - [ 13008, OpiumPrime ]
+        - [ 6881, spetsnaz84 ]
+
+Forfeit:
+    - 13008
