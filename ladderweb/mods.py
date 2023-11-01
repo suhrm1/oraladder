@@ -2,10 +2,70 @@ mods = dict(
     ra=dict(
         label="Red Alert",
         icon="icon-ra.png",
-        url="https://github.com/OpenRA/OpenRA/releases/tag/release-20230225",
-        release="release-20230225",
+        url="https://github.com/OpenRA/OpenRA/releases/tag/release-20231010",
+        release="release-20231010",
         # supports_analysis=True,
         mappacks=(
+            dict(
+                label="2023.2 v2 (rel20231010)",
+                filename="ladder-map-pack-2023.2-release20231010.zip",
+                changelog="""
+                    Updated Version of the 2023.2 map pack for new OpenRA game release (20231010).
+                """,
+                maps=(
+                    ("A Gardens 1vs1", "J MegaTank"),
+                    ("Amsterdamned", "wippie"),
+                    ("Algeria", "Pinkthoth"),
+                    ("Arctic Assault", "Tux"),
+                    ("Borrowed Time", "Omnom"),
+                    ("Calming Lakes", "Pinkthoth"),
+                    ("Crestfells", "Pinkthoth"),
+                    ("Enthrall", "Blackened"),
+                    ("Lonely Land", "Blackened"),
+                    ("Nachtlicht", "Blackened"),
+                    ("Pleasant Plains", "Lad"),
+                    ("River of Blood", "Lad"),
+                    ("Scorched Earth II", "J MegaTank"),
+                    ("Shadegrown", "Pinkthoth"),
+                    ("Snake Woods", "Pinkthoth"),
+                    ("The Great Divide", "SoScared"),
+                    ("The Highlands", "Lad"),
+                    ("The Space Between", "Blackened"),
+                    ("Two Towns", "Blackened"),
+                    ("Woodlands", "Lad"),
+                ),
+            ),
+            dict(
+                label="2023.2 v2 (2023-09-01)",
+                filename="ladder-map-pack-2023.2-v2.zip",
+                changelog="""
+                    Version 2 of the 2023.2 map pack extends the previous version by 6 new maps for added variety in
+                    the 20th RA Ladder season.
+                """,
+                maps=(
+                    ("Amsterdamned", "wippie"),
+                    ("Arctic Assault", "Tux"),
+                    ("Calming Lakes", "Pinkthoth"),
+                    ("Crestfells", "Pinkthoth"),
+                    ("Pleasant Plains", "Lad"),
+                    ("The Highlands", "Lad"),
+                    ("A Gardens 1vs1", "J MegaTank"),
+                    ("Algeria", "Pinkthoth"),
+                    ("Borrowed Time", "Omnom"),
+                    ("Enthrall", "Blackened"),
+                    ("Lonely Land", "Blackened"),
+                    ("Megara", "Pinkthoth"),
+                    ("Nachtlicht", "Blackened"),
+                    ("River of Blood", "Lad"),
+                    ("Scorched Earth II", "J MegaTank"),
+                    ("Shadegrown", "Pinkthoth"),
+                    ("Snake Woods", "Pinkthoth"),
+                    ("Two Towns", "Blackened"),
+                    ("The Space Between", "Blackened"),
+                    ("The Great Divide", "SoScared"),
+                    ("Woodlands", "Lad"),
+                ),
+            ),
             dict(
                 label="2023.2 (2023-07-01)",
                 filename="ladder-map-pack-2023.2.zip",
@@ -307,9 +367,30 @@ mods = dict(
     td=dict(
         label="Tiberian Dawn",
         icon="icon-td.png",
-        url="https://github.com/OpenRA/OpenRA/releases/tag/release-20230225",
-        release="release-20230225",
+        url="https://github.com/OpenRA/OpenRA/releases/tag/release-20231010",
+        release="release-20231010",
         mappacks=(
+            dict(
+                label="2023.0 v2",
+                filename="ladder-map-pack-td-2023.0-release20231010.zip",
+                changelog="""
+                    Updated map pack for OpenRA Release 20231010.
+                """,
+                maps=(
+                    ("16:9", "norman"),
+                    ("African Gambit", "MASTER, Jay"),
+                    ("A New Winter", "J MegaTank"),
+                    ("Blue Winter 1995", "J MegaTank"),
+                    ("CrackPoint", "MASTER"),
+                    ("Desert Cross", "J MegaTank"),
+                    ("Desert Mandarins", "MASTER"),
+                    ("Matchpoint", "ZxGanon"),
+                    ("Mountain Town Madness", "Blackened"),
+                    ("Rumble in the Jungle", "J MegaTank"),
+                    ("Tiberium Rift", "ZxGanon"),
+                    ("WarZoneX", "J MegaTank"),
+                ),
+            ),
             dict(
                 label="2023.0",
                 filename="ladder-map-pack-td-2023.0.zip",
