@@ -8,3 +8,4 @@ pydantic==1.10.4
 PyYAML==6.0
 sqlalchemy==2.0.1
 trueskill==0.4.5
+werkzeug<3.0.0
