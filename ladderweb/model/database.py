@@ -43,7 +43,13 @@ class LadderDatabase:
         if settings is not None:
             for key, value in settings.items():
                 self.set_config_value(key, value)
-        if season_config_dir is not None:
+
+        _seasons_initialized = False
+        seasons = self.get_seasons()
+        if "ra" in seasons and "td" in seasons:
+            if "all" in seasons["ra"] and "all" in seasons["td"] and "2m" in seasons["ra"] and "2m" in seasons["td"]:
+                _seasons_initialized = True
+        if not _seasons_initialized and season_config_dir is not None:
             self.load_yaml_season_config_from_directory(directory=season_config_dir)
 
     def _initialize_database(self):
