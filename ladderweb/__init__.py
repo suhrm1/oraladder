@@ -18,6 +18,7 @@ import datetime
 import json
 import os
 import os.path as op
+from logging import Logger
 from typing import Tuple, Union, Optional
 
 from flask import (
@@ -66,7 +67,7 @@ def _get_request_params() -> Tuple[str, str, str]:
 
 
 app = create_app()
-logger = app.logger
+logger: Logger = app.logger
 
 db_settings = {
     "bans_file": app.config.get("LADDER_BANS_FILE", "instance/banned_profiles"),
@@ -79,6 +80,7 @@ MainDB = LadderDatabase(
     connection_string=app.config.get("LADDER_MAIN_DATABASE", f"sqlite:///{app.instance_path}/ladder.db"),
     settings=db_settings,
     season_config_dir=app.instance_path,
+    logger=logger,
 )
 
 

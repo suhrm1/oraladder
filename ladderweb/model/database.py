@@ -1,5 +1,5 @@
 import datetime
-import logging
+from logging import Logger, getLogger
 import os
 from html import escape
 from typing import Optional, List, Dict
@@ -26,8 +26,18 @@ class LadderDatabase:
                 if fetch:
                     return cursor.fetchall()
 
-    def __init__(self, connection_string: str, settings: Optional[dict], season_config_dir: Optional[str] = None):
-        logging.debug(f"Loading main database with connection string {connection_string}")
+    def __init__(
+        self,
+        connection_string: str,
+        settings: Optional[dict],
+        season_config_dir: Optional[str] = None,
+        logger: Optional[Logger] = None,
+    ):
+        if not logger:
+            self.logger = getLogger()
+        else:
+            self.logger = logger
+        self.logger.debug(f"Loading main database with connection string {connection_string}")
         self.engine = create_engine(connection_string)
         self._initialize_database()
         if settings is not None:
@@ -134,19 +144,20 @@ class LadderDatabase:
         self.batch_upsert("config", batch=[{"key": key, "value": value}], primary_key="key")
 
     def load_yaml_season_config_from_directory(self, directory: str):
-        logging.debug(f"Loading season configuration from YAML files in {directory}")
+        self.logger.debug(f"Loading season configuration from YAML files in {directory}")
 
         if not os.path.isdir(directory):
-            logging.error(f"Not a directory")
+            self.logger.error(f"Not a directory")
             return None
 
         # initialize with default database keys and None values to impose static order
         seasons = {"ra": {"all": None, "2m": None}, "td": {"all": None, "2m": None}}
+        existing_seasons = seasons.copy()
 
         for base_path, _, files in os.walk(directory):
             for filename in files:
                 if os.path.splitext(filename)[1] in [".yml", ".yaml"]:
-                    logging.debug(f"Loading season configuration from {filename}")
+                    self.logger.debug(f"Loading season configuration from {filename}")
                     with open(os.path.join(base_path, filename), "r") as f:
                         yaml_content = yaml.safe_load(f.read())
                         # content should be a list of objects/dictionaries
@@ -159,20 +170,30 @@ class LadderDatabase:
                                     else:
                                         seasons[season.mod] = {season.id: season}
                                 except (ValidationError, TypeError) as e:
-                                    logging.warning(
+                                    self.logger.warning(
                                         f'Could not parse "{item}" into Season object.',
                                         exc_info=False,
                                     )
-        logging.debug(f"Collected season configuration: {seasons}")
-        existing_seasons = {row["mod"]: {row["id"]: Season(**row)} for row in self.fetch_table("season")}
+        self.logger.debug(f"Collected season configuration: {seasons}")
+
+        # Collect existing seasons from database
+        existing_season_list = [Season(**row) for row in self.fetch_table("season")]
+        existing_mods = list(set([s.mod for s in existing_season_list]))
+        for s in existing_season_list:
+            existing_seasons[s.mod][s.id] = s
+        self.logger.debug(f"Existing seasons: {existing_seasons}")
+
+        # Update or insert seasons into database
         for mod, items in seasons.items():
+            self.logger.debug(f"Existing seasons for {mod}: {list(existing_seasons[mod].keys())}")
             for season_id, season in items.items():
                 if season is None:
                     continue
-                if season_id in existing_seasons.keys():
+                if season_id in existing_seasons[mod].keys():
                     self.exec(f"DELETE FROM season WHERE mod='{mod}' AND id='{season_id}'")
-                    self.batch_insert("season", batch=[season.dict()])
-                    logging.debug(f"Inserted {season} into database")
+                    self.logger.debug(f"Deleted {mod}.{season_id} from database")
+                self.batch_insert("season", batch=[season.dict()])
+                self.logger.debug(f"Inserted {season} into database")
 
     def get_seasons(self) -> Dict[str, Dict[str, Season]]:
         rows = self.fetch_table("season", condition="1=1 ORDER BY end DESC")
@@ -570,8 +591,17 @@ class LadderDatabase:
             condition_str = ""
         with self.engine.connect() as conn:
             query = f"SELECT * FROM history {condition_str} ORDER BY end DESC;"
+            self.logger.debug(f"Querying season history: {query}")
             cursor = conn.execute(text(query))
-            return self._result_to_list(cursor)
+            result = self._result_to_list(cursor)
+            self.logger.debug(f"Number of historical seasons loaded: {len(result)}")
+
+            if not result:
+                # In case season history table has never been initialized, do that now and try again
+                self.update_season_history(mod_id=mod_id, season_group=season_group, season_id=season_id)
+                return self.get_season_history(mod_id=mod_id, season_group=season_group, season_id=season_id)
+            else:
+                return result
 
     def update_season_history(
         self, mod_id: Optional[str] = None, season_group: Optional[str] = None, season_id: Optional[str] = None
