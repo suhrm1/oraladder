@@ -202,7 +202,7 @@ class LadderDatabase:
                 self.logger.debug(f"Inserted {season} into database")
 
     def get_seasons(self) -> Dict[str, Dict[str, Season]]:
-        rows = self.fetch_table("season", condition="1=1 ORDER BY end DESC")
+        rows = self.fetch_table("season", condition="1=1 ORDER BY mod, end DESC, id")
         seasons = {"ra": {}, "td": {}}
         for r in rows:
             s = Season(**r)

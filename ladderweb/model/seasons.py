@@ -40,8 +40,10 @@ class Season(BaseModel):
         for date_param in ["start", "end"]:
             if date_param in kwargs:
                 if type(kwargs[date_param]) != datetime.date:
-                    logging.debug(f"Param {date_param} is not a date value: {kwargs[date_param]}")
-                    kwargs[date_param] = None
+                    try:
+                        kwargs[date_param] = datetime.date.fromisoformat(kwargs[date_param])
+                    except:
+                        kwargs[date_param] = None
         super().__init__(*args, **kwargs)
 
     def get_info(self) -> dict:
