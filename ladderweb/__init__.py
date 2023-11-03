@@ -597,6 +597,20 @@ def system_refresh():
     return jsonify(True)
 
 
+@app.route("/api/system/update_rankings", methods=["POST"])
+@api_key_authn(keys=[app.config.get("LADDER_API_KEY")])
+def update_rankings():
+    app.logger.debug("Initializing full ranking update")
+
+    seasons = MainDB.get_seasons()
+
+    for mod in seasons.keys():
+        for season_id, season in seasons[mod].items():
+            if season_id:
+                update_ranking(mod_id=mod, season_id=season_id)
+    return jsonify(True)
+
+
 @app.route("/api/<mod_id>/parse_replays", methods=["POST"])
 @api_key_authn(keys=[app.config.get("LADDER_API_KEY")])
 def parse_replays(mod_id, skip_inactive: bool = True, max_file_age_days: Optional[int] = None):
