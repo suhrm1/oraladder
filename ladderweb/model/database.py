@@ -2,7 +2,7 @@ import datetime
 from logging import Logger, getLogger
 import os
 from html import escape
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Sequence
 
 import sqlalchemy.engine
 import yaml
@@ -13,6 +13,7 @@ from sqlalchemy.future import create_engine
 
 from ladderweb.model.seasons import Season
 from ladderweb.model._sql import CREATE_STATEMENTS
+from ladderweb.model.init_mariadb import init_mariadb
 
 
 class LadderDatabase:
@@ -21,7 +22,7 @@ class LadderDatabase:
     def exec(self, sql: str, fetch: bool = False, transaction: Transaction = None):
         sql = sql.replace("\n", "").replace("\t", "")
         if transaction is not None:
-            cursor = transaction.connection.execute(sql)
+            cursor = transaction.execute(text(sql))
             if fetch:
                 return cursor.fetchall()
         else:
@@ -43,6 +44,7 @@ class LadderDatabase:
             self.logger = logger
         self.logger.debug(f"Loading main database with connection string {connection_string}")
         self.engine = create_engine(connection_string)
+        self.dialect = connection_string.split(":")[0]
         self._initialize_database()
         if settings is not None:
             for key, value in settings.items():
@@ -58,8 +60,11 @@ class LadderDatabase:
 
     def _initialize_database(self):
         # Create tables
-        for table, create_statement in CREATE_STATEMENTS.items():
-            self.exec(create_statement)
+        if self.dialect.startswith("sqlite"):
+            for table, create_statement in CREATE_STATEMENTS.items():
+                self.exec(create_statement)
+        elif self.dialect.startswith("mariadb"):
+            init_mariadb(self.engine)
 
         # Seed algorithm descriptions
         algorithms = [
@@ -88,12 +93,9 @@ class LadderDatabase:
             cols = "(`" + "`, `".join(columns) + "`)"
         else:
             cols = ""
-        row = "'" + "', '".join([escape(str(v)) if v is not None else "" for v in values]) + "'"
+        row = ", ".join([f"'{escape(str(v))}'" if v is not None else "NULL" for v in values])
         sql = f"""INSERT INTO {table} {cols} VALUES ({row})"""
-        if transaction is not None:
-            self.exec(sql, transaction=transaction)
-        else:
-            self.exec(sql)
+        self.exec(sql, transaction=transaction)
 
     def batch_upsert(self, table: str, batch: List[dict], primary_key: str):
         existing = self.fetch_table(table)
@@ -111,12 +113,10 @@ class LadderDatabase:
             self.update_row(table, values=item.values(), columns=list(item.keys()), primary_key=primary_key)
 
     @staticmethod
-    def _result_to_list(result: CursorResult) -> List[dict]:
-        result_list = []
-        columns = [k for k in result.keys()]
-        for row in result:
-            result_list.append(dict(zip(columns, row)))
-        return result_list
+    def _result_to_list(result: CursorResult | Sequence[sqlalchemy.Row]) -> List[dict]:
+        if type(result) == CursorResult:
+            result = result.fetchall()
+        return [r._asdict() for r in result]
 
     def fetch_table(self, table: str, condition: Optional[str] = None, distinct: Optional[bool] = False) -> List[dict]:
         _dist = "DISTINCT" if distinct else ""
@@ -125,13 +125,13 @@ class LadderDatabase:
             sql += f" WHERE {condition}"
         with self.engine.connect() as conn:
             with conn.begin():
-                res = conn.execute(text(sql))
-                return self._result_to_list(res)
+                res = conn.execute(text(sql)).fetchall()
+                return [r._asdict() for r in res]
 
     def update_row(self, table: str, values: [], columns: List[str], primary_key: str):
         row_dict = dict(zip(columns, values))
         pk_value = escape(str(row_dict[primary_key]))
-        condition = f"{primary_key}='{pk_value}'"
+        condition = f"`{primary_key}`='{pk_value}'"
         self.update_row_condition(table=table, values=values, columns=columns, condition=condition)
 
     def update_row_condition(self, table: str, values: [], columns: List[str], condition: str):
@@ -147,7 +147,7 @@ class LadderDatabase:
 
     def get_config_value(self, key: str) -> Optional[str]:
         with self.engine.connect() as conn:
-            cursor = conn.execute(text(f"SELECT value FROM config WHERE key='{key}'"))
+            cursor = conn.execute(text(f"SELECT value FROM config WHERE `key`='{key}'"))
             return cursor.fetchone()[0]
 
     def set_config_value(self, key: str, value: str):
@@ -200,13 +200,13 @@ class LadderDatabase:
                 if season is None:
                     continue
                 if season_id in existing_seasons[mod].keys():
-                    self.exec(f"DELETE FROM season WHERE mod='{mod}' AND id='{season_id}'")
+                    self.exec(f"DELETE FROM season WHERE `mod`='{mod}' AND id='{season_id}'")
                     self.logger.debug(f"Deleted {mod}.{season_id} from database")
                 self.batch_insert("season", batch=[season.dict()])
                 self.logger.debug(f"Inserted {season} into database")
 
     def get_seasons(self) -> Dict[str, Dict[str, Season]]:
-        rows = self.fetch_table("season", condition="1=1 ORDER BY mod, end DESC, id")
+        rows = self.fetch_table("season", condition="1=1 ORDER BY `mod`, `end` DESC, `id`")
         seasons = {"ra": {}, "td": {}}
         for r in rows:
             s = Season(**r)
@@ -214,7 +214,7 @@ class LadderDatabase:
         return seasons
 
     def get_banned_profile_ids(self) -> List[int]:
-        ids = self.exec(f"SELECT DISTINCT profile_id FROM accounts WHERE banned='True';", fetch=True)
+        ids = self.exec(f"SELECT DISTINCT profile_id FROM accounts WHERE banned=1;", fetch=True)
         ids = [item[0] for item in ids]
         return ids
 
@@ -224,46 +224,48 @@ class LadderDatabase:
                 SELECT r.*, a.profile_name, a.avatar_url FROM ranking r
                     LEFT JOIN players a
                     ON r.profile_id=a.profile_id
-                    WHERE r.season_id='{season_id}' AND r.mod='{mod}'
+                    WHERE r.season_id='{season_id}' AND r.`mod`='{mod}'
                     ORDER BY r.rating DESC, (r.wins/r.losses)*100 DESC, (r.wins+r.losses) DESC"""
         with self.engine.connect() as conn:
-            res = conn.execute(text(sql))
+            res = conn.execute(text(sql)).fetchall()
             return self._result_to_list(res)
 
     def get_highscore(self, mod_id: str = "ra", group_id: str = "seasons"):
         sql = f"""WITH players (profile_id, profile_name, avatar_url) AS
-            (SELECT DISTINCT profile_id, profile_name, avatar_url FROM accounts WHERE banned!='True')
-            SELECT p.*,
-            (SELECT COUNT(r.rank) FROM ranking r
-                LEFT JOIN season s ON r.season_id=s.id AND r.mod=s.mod
-                WHERE profile_id=p.profile_id AND s.mod='{mod_id}' AND s.`group`='{group_id}'
-                AND rank=1 AND s.active=0) as 'first_place',
-            (SELECT COUNT(r.rank) FROM ranking r
-                LEFT JOIN season s ON r.season_id=s.id AND r.mod=s.mod
-                WHERE profile_id=p.profile_id  AND s.mod='{mod_id}' AND s.`group`='{group_id}'
-                AND rank=2 AND s.active=0)  as 'second_place',
-            (SELECT COUNT(r.rank) FROM ranking r
-                LEFT JOIN season s ON r.season_id=s.id AND r.mod=s.mod
-                WHERE profile_id=p.profile_id
-                AND s.mod='{mod_id}' AND s.`group`='{group_id}' AND rank=3 AND s.active=0) as 'third_place',
-            (SELECT COUNT(r1.rank) FROM ranking r1
-                LEFT JOIN season s ON r1.season_id=s.id AND r1.mod=s.mod
-                WHERE r1.profile_id=p.profile_id  AND s.mod='{mod_id}' AND s.`group`='{group_id}' AND s.active=0
-                AND r1.rank<=(10*(SELECT COUNT(r2.profile_id) FROM ranking r2
-                WHERE r2.season_id=r1.season_id AND rank>0)/100)) as 'top_ten_percent',
-            (SELECT COUNT(r.rank) FROM ranking r
-                LEFT JOIN season s ON r.season_id=s.id AND r.mod=s.mod
-                WHERE profile_id=p.profile_id AND s.mod='{mod_id}' AND s.`group`='{group_id}'
-                AND rank>0 AND s.active=0) as seasons,
-            (SELECT COUNT(DISTINCT g.hash) FROM SeasonGames g
-                LEFT JOIN season s ON g.season_id=s.id AND g.mod=s.mod
-                WHERE profile_id=g.profile_id0  AND s.`group`='{group_id}') as career_wins,
-            (SELECT COUNT(DISTINCT g.hash) FROM SeasonGames g
-                LEFT JOIN season s ON g.season_id=s.id AND g.mod=s.mod
-                WHERE (profile_id=g.profile_id0 OR profile_id=g.profile_id1)
-                    AND s.`group`='{group_id}') as career_games
-            FROM players p WHERE (top_ten_percent > 0 OR first_place>0 OR second_place>0 OR third_place>0)
+                (SELECT DISTINCT profile_id, profile_name, avatar_url FROM accounts WHERE banned!=1),
+            scores as (SELECT p.*,
+                (SELECT COUNT(r.`rank`) FROM ranking r
+                    LEFT JOIN season s ON r.season_id=s.id AND r.`mod`=s.`mod`
+                    WHERE profile_id=p.profile_id AND s.`mod`='{mod_id}' AND s.`group`='{group_id}'
+                    AND `rank`=1 AND s.active=0) as 'first_place',
+                (SELECT COUNT(r.`rank`) FROM ranking r
+                    LEFT JOIN season s ON r.season_id=s.id AND r.`mod`=s.`mod`
+                    WHERE profile_id=p.profile_id  AND s.`mod`='{mod_id}' AND s.`group`='{group_id}'
+                    AND `rank`=2 AND s.active=0)  as 'second_place',
+                (SELECT COUNT(r.`rank`) FROM ranking r
+                    LEFT JOIN season s ON r.season_id=s.id AND r.`mod`=s.`mod`
+                    WHERE profile_id=p.profile_id
+                    AND s.`mod`='{mod_id}' AND s.`group`='{group_id}' AND `rank`=3 AND s.active=0) as 'third_place',
+                (SELECT COUNT(r1.`rank`) FROM ranking r1
+                    LEFT JOIN season s ON r1.season_id=s.id AND r1.`mod`=s.mod
+                    WHERE r1.profile_id=p.profile_id  AND s.`mod`='{mod_id}' AND s.`group`='{group_id}' AND s.active=0
+                    AND r1.`rank`<=(10*(SELECT COUNT(r2.profile_id) FROM ranking r2
+                    WHERE r2.season_id=r1.season_id AND `rank`>0)/100)) as 'top_ten_percent',
+                (SELECT COUNT(r.`rank`) FROM ranking r
+                    LEFT JOIN season s ON r.season_id=s.id AND r.`mod`=s.`mod`
+                    WHERE profile_id=p.profile_id AND s.`mod`='{mod_id}' AND s.`group`='{group_id}'
+                    AND `rank`>0 AND s.active=0) as 'seasons',
+                (SELECT COUNT(DISTINCT g.hash) FROM SeasonGames g
+                    LEFT JOIN season s ON g.season_id=s.id AND g.`mod`=s.`mod`
+                    WHERE profile_id=g.profile_id0  AND s.`group`='{group_id}') as 'career_wins',
+                (SELECT COUNT(DISTINCT g.hash) FROM SeasonGames g
+                    LEFT JOIN season s ON g.season_id=s.id AND g.`mod`=s.`mod`
+                    WHERE (profile_id=g.profile_id0 OR profile_id=g.profile_id1)
+                        AND s.`group`='{group_id}') as 'career_games'
+                FROM players p)
+            SELECT * FROM scores WHERE (top_ten_percent>0 OR first_place>0 OR second_place>0 OR third_place>0)
             ORDER BY 4 DESC, 5 DESC, 6 DESC, 7 DESC, 9 DESC, 8 DESC, 10 DESC;"""
+        print(sql)
         with self.engine.connect() as conn:
             res = conn.execute(text(sql))
             return self._result_to_list(res)
@@ -274,7 +276,7 @@ class LadderDatabase:
             with self.engine.connect() as conn:
                 query = (
                     f"SELECT MAX(end_time) FROM SeasonGames WHERE {profile_id} "
-                    f"IN (profile_id0, profile_id1) AND mod='{mod_id}'"
+                    f"IN (profile_id0, profile_id1) AND `mod`='{mod_id}'"
                 )
                 last_game_date = datetime.datetime.fromisoformat(conn.execute(text(query)).fetchone()[0])
                 query = f"SELECT * FROM player_mod_stats WHERE mod_id='{mod_id}' AND profile_id={profile_id}"
@@ -297,35 +299,39 @@ class LadderDatabase:
             pass
 
         if not use_cache:
+            if self.dialect.startswith("sqlite"):
+                sqlfunc_avg_gametime = "strftime('%M:%S', AVG(julianday(end_time) - julianday(start_time)))"
+            elif self.dialect.startswith("mariadb"):
+                sqlfunc_avg_gametime = 'TIME_FORMAT(AVG(TIMEDIFF(TIMESTAMP(end_time), TIMESTAMP(start_time))), "%i:%S")'
             with self.engine.begin() as transaction:
                 # We produce the player info and statistics from fact tables
                 select = f"""SELECT
                 *,
                 (
-                    SELECT COUNT(*) FROM game WHERE profile_id0={profile_id} AND mod='{mod_id}'
+                    SELECT COUNT(*) FROM game WHERE profile_id0={profile_id} AND `mod`='{mod_id}'
                 ) as wins,
                 (
-                    SELECT COUNT(*) FROM game WHERE profile_id1={profile_id} AND mod='{mod_id}'
+                    SELECT COUNT(*) FROM game WHERE profile_id1={profile_id} AND `mod`='{mod_id}'
                 ) as losses,
                 (
-                    SELECT strftime('%M:%S', AVG(julianday(end_time) - julianday(start_time)))
+                    SELECT {sqlfunc_avg_gametime}
                     FROM game
-                    WHERE {profile_id} IN (profile_id0, profile_id1) AND mod='{mod_id}'
+                    WHERE {profile_id} IN (profile_id0, profile_id1) AND `mod`='{mod_id}'
                 ) AS avg_game_duration,
                 (
                     SELECT MIN(end_time) FROM game
-                    WHERE {profile_id} IN (profile_id0, profile_id1) AND mod='{mod_id}'
+                    WHERE {profile_id} IN (profile_id0, profile_id1) AND `mod`='{mod_id}'
                 ) AS first_game,
                 (
                     SELECT MAX(end_time) FROM game
-                    WHERE {profile_id} IN (profile_id0, profile_id1) AND mod='{mod_id}'
+                    WHERE {profile_id} IN (profile_id0, profile_id1) AND `mod`='{mod_id}'
                 ) AS last_game,
                 (
                     SELECT COUNT(DISTINCT s.id) FROM ranking r
                         LEFT JOIN season s ON r.season_id=s.id AND r.mod =s.mod
-                    WHERE r.profile_id={profile_id} AND s.mod='{mod_id}' AND s.`group`='{season_group}'
+                    WHERE r.profile_id={profile_id} AND s.`mod`='{mod_id}' AND s.`group`='{season_group}'
                 ) as seasons
-                FROM accounts WHERE profile_id={profile_id} AND NOT banned
+                FROM accounts WHERE profile_id={profile_id} AND banned!=1
                 LIMIT 1"""
                 res: sqlalchemy.engine.row.Row = transaction.execute(text(select)).fetchone()
                 stats = dict(res._mapping)
@@ -354,7 +360,7 @@ class LadderDatabase:
     def check_player_active_season(self, mod: str, season_id: str, profile_id: int) -> bool:
         check = (
             f"SELECT COUNT(*) FROM SeasonGames sg "
-            f"WHERE mod='{mod}' AND season_id='{season_id}' "
+            f"WHERE `mod`='{mod}' AND season_id='{season_id}' "
             f"AND (profile_id0='{profile_id}' OR profile_id1='{profile_id}');"
         )
         decision = bool(self.exec(check, fetch=True)[0][0])
@@ -363,7 +369,7 @@ class LadderDatabase:
     def check_player_active_mod(self, mod: str, profile_id: str) -> bool:
         check = (
             f"SELECT COUNT(*) FROM SeasonGames sg "
-            f"WHERE mod='{mod}' "
+            f"WHERE `mod`='{mod}' "
             f"AND (profile_id0='{profile_id}' OR profile_id1='{profile_id}');"
         )
         decision = bool(self.exec(check, fetch=True)[0][0])
@@ -372,7 +378,7 @@ class LadderDatabase:
     def get_games(
         self, mod_id: str, start: datetime.date, end: datetime.date, order_by: str = "end_time ASC"
     ) -> List[dict]:
-        query = f"SELECT * FROM game WHERE mod='{mod_id}' AND start_time>='{start}' AND end_time<='{end}'"
+        query = f"SELECT * FROM game WHERE `mod`='{mod_id}' AND start_time>='{start}' AND end_time<='{end}'"
         if order_by:
             query += f" ORDER BY {order_by}"
         with self.engine.connect() as conn:
@@ -385,7 +391,7 @@ class LadderDatabase:
         for i in [0, 1]:
             res = self.exec(
                 f"SELECT COUNT(*) as number, selected_faction_{i} as faction "
-                f"FROM game WHERE mod='{mod}' GROUP BY selected_faction_{i};",
+                f"FROM game WHERE `mod`='{mod}' GROUP BY selected_faction_{i};",
                 fetch=True,
             )
             for count, faction in res:
@@ -396,7 +402,7 @@ class LadderDatabase:
         return {faction: win_loss.get("wins", 0) + win_loss.get("losses", 0) for faction, win_loss in stats.items()}
 
     def get_player_faction_stats(self, mod: str, profile_id: str, season_id: Optional[str] = None) -> {}:
-        condition = f"p.profile_id='{profile_id}' AND g.mod='{mod}'"
+        condition = f"p.profile_id='{profile_id}' AND g.`mod`='{mod}'"
         if season_id is not None:
             condition += f" AND g.season_id='{season_id}'"
         select = f"""SELECT DISTINCT (CASE
@@ -410,11 +416,11 @@ class LadderDatabase:
         return {row[0]: row[1] for row in res}
 
     def get_player_map_stats(self, mod: str, profile_id: str, season_id: Optional[str] = None) -> {}:
-        condition = f"(g.profile_id0='{profile_id}' OR g.profile_id1='{profile_id}') AND g.mod='{mod}'"
+        condition = f"(g.profile_id0='{profile_id}' OR g.profile_id1='{profile_id}') AND g.`mod`='{mod}'"
         if season_id is None:
             # In this case we need to join the season table to add the season group as a condition
             condition += f" AND s.`group`='seasons'"
-            join = "LEFT JOIN season s ON (g.season_id=s.id AND s.mod=g.mod)"
+            join = "LEFT JOIN season s ON (g.season_id=s.id AND s.`mod`=g.`mod`)"
         else:
             # For any specific season, no join is required
             condition += f" AND g.season_id='{season_id}'"
@@ -426,7 +432,6 @@ class LadderDatabase:
             {join}
             WHERE {condition}
             GROUP BY map_title;"""
-        print(select)
         res = self.exec(select, fetch=True)
         return {row[0]: {"wins": row[1], "losses": row[2]} for row in res}
 
@@ -449,28 +454,33 @@ class LadderDatabase:
             row["season_id"]: row for row in self.fetch_table("player_season_history", condition=select_condition)
         }
 
+        if self.dialect.startswith("sqlite"):
+            sqlfunc_avg_gametime = "strftime('%M:%S', AVG(julianday(g.end_time) - julianday(g.start_time)))"
+        elif self.dialect.startswith("mariadb"):
+            sqlfunc_avg_gametime = 'TIME_FORMAT(AVG(TIMEDIFF(TIMESTAMP(g.end_time), TIMESTAMP(g.start_time))), "%i:%S")'
+
         for season in seasons:
             if season.group != season_group:
                 continue
             if self.check_player_active_season(mod=mod, season_id=season.id, profile_id=profile_id):
                 if season.id not in _history.keys() or update_history:
-                    select = f"""SELECT rank, rating, wins, losses, (wins+losses) as games, eligible, comment,
+                    select = f"""SELECT `rank`, rating, wins, losses, (wins+losses) as games, eligible, comment,
                         (
-                            SELECT strftime('%M:%S', AVG(julianday(g.end_time) - julianday(g.start_time)))
+                            SELECT {sqlfunc_avg_gametime}
                             FROM SeasonGames g
                             WHERE r.profile_id IN (g.profile_id0, g.profile_id1)
-                            AND g.mod=r.mod AND g.season_id=r.season_id
+                            AND g.`mod`=r.`mod` AND g.season_id=r.season_id
                         ) AS avg_game_duration,
                         (
-                            SELECT COUNT(rank) FROM ranking r2
-                            WHERE r2.mod=r.mod AND r2.season_id=r.season_id
+                            SELECT COUNT(`rank`) FROM ranking r2
+                            WHERE r2.`mod`=r.`mod` AND r2.season_id=r.season_id
                         ) AS players
                         FROM ranking r
-                        WHERE r.profile_id='{profile_id}' AND r.mod='{mod}' AND r.season_id='{season.id}';"""
+                        WHERE r.profile_id='{profile_id}' AND r.`mod`='{mod}' AND r.season_id='{season.id}';"""
                     row: sqlalchemy.engine.row.Row = self.exec(select, fetch=True)[0]
                     stats = dict(row._mapping)
                     stats["ratio"] = "{:.2f}%".format(stats["wins"] / stats["games"] * 100)
-                    stats["eligible"] = stats["eligible"] not in ["False", "0", 0]
+                    stats["eligible"] = 1 if (stats["eligible"] not in ["False", "0", 0]) else 0
                     stats["season_id"] = season.id
                     stats["mod_id"] = mod
                     stats["profile_id"] = profile_id
@@ -503,23 +513,16 @@ class LadderDatabase:
     ):
         if season_id is None:
             # Condition to select statistics over all player games
-            condition1 = f"""profile_id0={player_id} AND "mod"='{mod}'"""
-            condition2 = f"""profile_id1={player_id} AND "mod"='{mod}'"""
+            condition1 = f"""profile_id0={player_id} AND `mod`='{mod}'"""
+            condition2 = f"""profile_id1={player_id} AND `mod`='{mod}'"""
             table = "game"
         else:
             # Condition to select statistics for a specific season
-            condition1 = f"""profile_id0={player_id} AND "mod"='{mod}' AND season_id='{season_id}'"""
-            condition2 = f"""profile_id1={player_id} AND "mod"='{mod}' AND season_id='{season_id}'"""
+            condition1 = f"""profile_id0={player_id} AND `mod`='{mod}' AND season_id='{season_id}'"""
+            condition2 = f"""profile_id1={player_id} AND `mod`='{mod}' AND season_id='{season_id}'"""
             table = "SeasonGames"
 
-        query = f"""SELECT
-            (SELECT DISTINCT profile_name FROM accounts WHERE profile_id=opponent_id) AS opponent_name,
-            opponent_id,
-            SUM(num_wins) + SUM(num_losses) AS played,
-            SUM(num_wins) AS wins,
-            SUM(num_losses) AS losses,
-            ROUND(CAST(SUM(num_wins) AS FLOAT) / (CAST(SUM(num_wins) + SUM(num_losses) AS FLOAT)) * 100, 2) AS win_rate
-            FROM
+        query = f"""WITH game_stats AS
             (
                 SELECT COUNT(`hash`) AS num_wins, 0 AS num_losses, profile_id1 AS opponent_id
                     FROM {table}
@@ -531,6 +534,14 @@ class LadderDatabase:
                     WHERE {condition2}
                     GROUP BY profile_id0
             )
+            SELECT
+            (SELECT DISTINCT profile_name FROM accounts WHERE profile_id=opponent_id) AS opponent_name,
+            opponent_id,
+            SUM(num_wins) + SUM(num_losses) AS played,
+            SUM(num_wins) AS wins,
+            SUM(num_losses) AS losses,
+            ROUND(CAST(SUM(num_wins) AS FLOAT) / (CAST(SUM(num_wins) + SUM(num_losses) AS FLOAT)) * 100, 2) AS win_rate
+            FROM game_stats
             GROUP BY opponent_id
             ORDER BY played DESC, win_rate DESC, opponent_name ASC"""
 
@@ -538,7 +549,7 @@ class LadderDatabase:
         return [dict(r._mapping) for r in result]
 
     def update_player_season_history(self, mod_id: str, season_id: Optional[str] = None, season_group: str = "seasons"):
-        player_query = f"SELECT DISTINCT profile_id FROM rating WHERE mod='{mod_id}'"
+        player_query = f"SELECT DISTINCT profile_id FROM rating WHERE `mod`='{mod_id}'"
         if season_id is not None:
             player_query += f" AND season_id='{season_id}'"
         profile_id_list = self.exec(sql=player_query, fetch=True)
@@ -551,7 +562,7 @@ class LadderDatabase:
     def get_map_stats(self, mod: str, start_time: str, end_time: str) -> {}:
         select = (
             f"SELECT map_title, COUNT(*) AS count FROM game "
-            f"WHERE mod='{mod}' AND start_time>='{start_time}' "
+            f"WHERE `mod`='{mod}' AND start_time>='{start_time}' "
             f"AND end_time<='{end_time}'"
             f"GROUP BY map_title;"
         )
@@ -559,11 +570,15 @@ class LadderDatabase:
         return {map_title: count for map_title, count in res}
 
     def get_season_stats(self, mod: str, season_id: str) -> {}:
-        season_stats = self.get_season_history(mod_id=mod, season_id=season_id)[0]
+        try:
+            season_stats = self.get_season_history(mod_id=mod, season_id=season_id)[0]
+        except IndexError:
+            self.logger.warning(f"Season history database table seems to be empty.")
+            return {"nb_games": 0}
         _players = self.exec(
             f"""SELECT DISTINCT r.profile_id, a.profile_name
             FROM ranking r LEFT JOIN accounts a ON r.profile_id=a.profile_id
-            WHERE mod='{mod}';""",
+            WHERE `mod`='{mod}';""",
             fetch=True,
         )
         _players = {p[0]: p[1] for p in _players}
@@ -581,7 +596,7 @@ class LadderDatabase:
         _players = self.exec(
             f"""SELECT DISTINCT r.profile_id, a.profile_name
             FROM ranking r LEFT JOIN accounts a ON r.profile_id=a.profile_id
-            WHERE mod='{mod}';""",
+            WHERE `mod`='{mod}';""",
             fetch=True,
         )
         _players = {p[0]: p[1] for p in _players}
@@ -596,7 +611,11 @@ class LadderDatabase:
         return season_stats
 
     def get_season_history(
-        self, mod_id: Optional[str] = None, season_group: Optional[str] = None, season_id: Optional[str] = None
+        self,
+        mod_id: Optional[str] = None,
+        season_group: Optional[str] = None,
+        season_id: Optional[str] = None,
+        abort_on_empty_result: bool = False,
     ) -> List[Dict]:
         conditions = []
         if mod_id is not None:
@@ -616,10 +635,12 @@ class LadderDatabase:
             result = self._result_to_list(cursor)
             self.logger.debug(f"Number of historical seasons loaded: {len(result)}")
 
-            if not result:
+            if not result and not abort_on_empty_result:
                 # In case season history table has never been initialized, do that now and try again
                 self.update_season_history(mod_id=mod_id, season_group=season_group, season_id=season_id)
-                return self.get_season_history(mod_id=mod_id, season_group=season_group, season_id=season_id)
+                return self.get_season_history(
+                    mod_id=mod_id, season_group=season_group, season_id=season_id, abort_on_empty_result=True
+                )
             else:
                 return result
 
@@ -643,34 +664,39 @@ class LadderDatabase:
         else:
             condition_str, condition_history_table_str = "", ""
 
+        if self.dialect.startswith("sqlite"):
+            sqlfunc_avg_gametime = "strftime('%M:%S', AVG(julianday(end_time) - julianday(start_time)))"
+        elif self.dialect.startswith("mariadb"):
+            sqlfunc_avg_gametime = 'TIME_FORMAT(AVG(TIMEDIFF(TIMESTAMP(end_time), TIMESTAMP(start_time))), "%i:%S")'
+
         query = f"""SELECT
-            s.mod as mod_id,
+            s.`mod` as mod_id,
             s.id as season_id,
             s.title as title,
             s.`group` as season_group,
             s.`start` as start,
             s.end as end,
             (
-                SELECT COUNT(DISTINCT hash) FROM SeasonGames WHERE mod=s.mod AND season_id=s.id
+                SELECT COUNT(DISTINCT hash) FROM SeasonGames WHERE `mod`=s.`mod` AND season_id=s.id
             ) AS nb_games,
             (
-                SELECT strftime('%M:%S', AVG(julianday(end_time) - julianday(start_time)))
-                    FROM SeasonGames WHERE mod=s.mod AND season_id=s.id
+                SELECT {sqlfunc_avg_gametime}
+                    FROM SeasonGames WHERE `mod`=s.`mod` AND season_id=s.id
             ) AS avg_game_duration,
             (
-                SELECT COUNT(r.rank) FROM ranking r WHERE r.mod=s.mod AND r.season_id=s.id
+                SELECT COUNT(r.`rank`) FROM ranking r WHERE r.`mod`=s.`mod` AND r.season_id=s.id
             ) AS nb_players,
             (
                 SELECT profile_id FROM ranking
-                    WHERE mod=s.mod AND season_id=s.id AND rank=1
+                    WHERE `mod`=s.`mod` AND season_id=s.id AND `rank`=1
             ) as first_place,
             (
                 SELECT profile_id FROM ranking
-                    WHERE mod=s.mod AND season_id=s.id AND rank=2
+                    WHERE `mod`=s.`mod` AND season_id=s.id AND `rank`=2
             ) as second_place,
             (
                 SELECT profile_id FROM ranking
-                    WHERE mod=s.mod AND season_id=s.id AND rank=3
+                    WHERE `mod`=s.`mod` AND season_id=s.id AND `rank`=3
             ) as third_place,
             s.algorithm
         FROM season s
@@ -685,7 +711,7 @@ class LadderDatabase:
     def get_games_by_date_range(self, mod: str, start: str, end: str) -> {}:
         select = (
             f"SELECT date(end_time) as date, COUNT(*) as count FROM game "
-            f"WHERE mod='{mod}' AND start_time>='{start}' AND end_time<='{end}' "
+            f"WHERE `mod`='{mod}' AND start_time>='{start}' AND end_time<='{end}' "
             f"GROUP BY date ORDER BY date ASC"
         )
         res = self.exec(select, fetch=True)

@@ -65,3 +65,8 @@ class Season(BaseModel):
             end=self.end,
             duration=self.duration,
         )
+
+    def dict(self, *args, **kwargs):
+        dictionary = super().dict()
+        dictionary["active"] = 1 if self.active else 0
+        return dictionary

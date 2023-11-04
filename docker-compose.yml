@@ -1,0 +1,18 @@
+version: "3"
+
+services:
+
+  database:
+    image: mariadb:11
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    environment:
+      MARIADB_ROOT_PASSWORD: ladderdevdbroot
+      MARIADB_DATABASE: ladder
+      MARIADB_USER: ladder
+      MARIADB_PASSWORD: ladderdbsecret
+    ports:
+      - 127.0.0.1:3306:3306
+
+volumes:
+  mariadb_data:

@@ -77,7 +77,7 @@ def _get_activity_stats(db: LadderDatabase, season: Season):
 
 
 def _get_player_ratings(db: LadderDatabase, mod: str, season_id: str, profile_id: str):
-    condition = f"profile_id='{profile_id}' AND mod='{mod}' AND season_id='{season_id}'"
+    condition = f"profile_id='{profile_id}' AND `mod`='{mod}' AND season_id='{season_id}'"
     res = db.fetch_table("rating", condition=condition)
 
     ratings = []

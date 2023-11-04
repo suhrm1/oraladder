@@ -416,7 +416,7 @@ def latest_games_js():
                 end_date = datetime.date.today() + datetime.timedelta(days=1)
             app.logger.debug(f"Collecting games played between {start_date} and {end_date}.")
             condition = (
-                f"mod='{cur_mod}' AND end_time>='{start_date.isoformat()}' "
+                f"`mod`='{cur_mod}' AND end_time>='{start_date.isoformat()}' "
                 f"AND end_time<='{end_date.isoformat()}' ORDER BY end_time DESC"
             )
         else:
@@ -424,9 +424,9 @@ def latest_games_js():
             # we imply that all games from past 14 days shall be returned
             end_date = datetime.date.today() - datetime.timedelta(days=14)
             app.logger.debug(f"Collecting last 14 days' games.")
-            condition = f"mod='{cur_mod}' AND end_time>='{end_date.isoformat()}' ORDER BY end_time DESC"
+            condition = f"`mod`='{cur_mod}' AND end_time>='{end_date.isoformat()}' ORDER BY end_time DESC"
     else:
-        condition = f"mod='{cur_mod}' AND season_id='{_season_id}' ORDER BY end_time DESC"
+        condition = f"`mod`='{cur_mod}' AND season_id='{_season_id}' ORDER BY end_time DESC"
 
     matches = MainDB.fetch_table("SeasonGames", condition=condition)
 
@@ -500,7 +500,7 @@ def player_games_js(profile_id):
         table = "SeasonGames"
 
     condition = (
-        f"mod='{cur_mod}' {season_condition}"
+        f"`mod`='{cur_mod}' {season_condition}"
         f"AND (profile_id0='{profile_id}' OR profile_id1='{profile_id}') "
         f"ORDER BY end_time DESC"
     )

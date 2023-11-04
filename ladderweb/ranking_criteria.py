@@ -14,9 +14,9 @@ def check_eligible(db: LadderDatabase, season: Season, profile_id: int) -> Tuple
     nr_opponents = 3
 
     condition = (
-        f"mod='{season.mod}' AND season_id='{season.id}' "
+        f"`mod`='{season.mod}' AND season_id='{season.id}' "
         f"AND (profile_id0='{profile_id}' OR profile_id1='{profile_id}')"
-        f"AND NOT p0_banned AND NOT p1_banned"
+        f"AND p0_banned!=1 AND p1_banned!=1"
     )
     season_games = db.fetch_table(table="SeasonGames", condition=condition)
 
