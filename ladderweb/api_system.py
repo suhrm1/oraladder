@@ -8,6 +8,7 @@ from datetime import date
 from hashlib import sha256
 from operator import itemgetter
 from typing import Dict, Tuple, Optional
+from logging import Logger, getLogger
 
 from laddertools.model import PlayerLookup
 from laddertools.rankings import ranking_systems
@@ -42,8 +43,9 @@ def parse_replays(
     skip_known_files: bool = True,
     max_file_modified_days: Optional[int] = None,
     known_accounts: Dict = {},
+    logger: Logger = getLogger(),
 ):
-    logging.debug(f"Parsing replay files for mod {mod} from folder {replay_directory}")
+    logger.debug(f"Parsing replay files for mod {mod} from folder {replay_directory}")
     # prepare a timer
     _now = datetime.datetime.now
     _start_time = _now()
@@ -53,10 +55,17 @@ def parse_replays(
     if known_accounts is None:
         known_accounts = _accounts_db(database)
 
+    if not os.path.exists(replay_directory):
+        logger.warning(f"Designated replay path {replay_directory} does not exist.")
+        return {
+            "replays_parsed": 0,
+            "processing_time": datetime.timedelta(0),
+        }, known_accounts
+
     for f in os.listdir(replay_directory):
         if os.path.isdir(replay_directory + f):
             subfolder = replay_directory + f + "/"
-            logging.debug(f"Subfolder {f}, entering recursion")
+            logger.debug(f"Subfolder {f}, entering recursion")
             recursion_result, known_accounts = parse_replays(
                 database=database,
                 mod=mod,
@@ -79,7 +88,7 @@ def parse_replays(
 
     if max_file_modified_days is not None:
         if max_file_modified_days >= 0:
-            logging.debug(
+            logger.debug(
                 f"Excluding replay files older than {max_file_modified_days} days (based on OS file modified time)"
             )
             today = date.today()
@@ -87,7 +96,7 @@ def parse_replays(
                 mdate = date.fromtimestamp(os.path.getmtime(path))
                 if (today - mdate).days >= max_file_modified_days:
                     replays.remove(path)
-                    logging.debug(f"Skipping {path} (modified date: {mdate})")
+                    logger.debug(f"Skipping {path} (modified date: {mdate})")
 
     if len(replays) < 1:
         # nothing to do
@@ -105,7 +114,7 @@ def parse_replays(
             ):
                 results.append(result)
         except Exception as e:
-            logging.error(f"Error parsing replay file {replay}")
+            logger.error(f"Error parsing replay file {replay}")
             yesterday = today - datetime.timedelta(days=1)
             if today.isoformat() not in replay and yesterday.isoformat() not in replay:
                 # replay may still be in progress, only block it from-reparsing if it does not contain recent date

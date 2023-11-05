@@ -20,6 +20,7 @@ import os
 import os.path as op
 from logging import Logger
 from typing import Tuple, Union, Optional
+from concurrent.futures import ThreadPoolExecutor
 
 from flask import (
     escape,
@@ -66,6 +67,7 @@ def _get_request_params() -> Tuple[str, str, str]:
     return endpoint, mod, period
 
 
+# Initialize the Flask application
 app = create_app()
 logger: Logger = app.logger
 
@@ -82,6 +84,9 @@ MainDB = LadderDatabase(
     season_config_dir=app.instance_path,
     logger=logger,
 )
+
+# Initialize a background task pool
+sequential_background_task_executor = ThreadPoolExecutor(1)
 
 
 @app.context_processor
@@ -600,15 +605,18 @@ def system_refresh():
 @app.route("/api/system/update_rankings", methods=["POST"])
 @api_key_authn(keys=[app.config.get("LADDER_API_KEY")])
 def update_rankings():
+    """Trigger a database update for all available seasons.
+
+    Will execute all the required updates as background tasks;
+    see update_ranking() method for further details.
+    """
     app.logger.debug("Initializing full ranking update")
-
     seasons = MainDB.get_seasons()
-
     for mod in seasons.keys():
         for season_id, season in seasons[mod].items():
             if season_id:
                 update_ranking(mod_id=mod, season_id=season_id)
-    return jsonify(True)
+    return jsonify("Scheduled database update for all seasons.")
 
 
 @app.route("/api/<mod_id>/parse_replays", methods=["POST"])
@@ -633,6 +641,7 @@ def parse_replays(mod_id, skip_inactive: bool = True, max_file_age_days: Optiona
                     replay_directory=season.replay_path,
                     max_file_modified_days=max_file_age_days,
                     skip_known_files=True,
+                    logger=logger,
                 )
                 parsed_folders[season.mod].append(season.replay_path)
                 result["replays_parsed"] += parsing_result["replays_parsed"]
@@ -648,21 +657,33 @@ def parse_replays(mod_id, skip_inactive: bool = True, max_file_age_days: Optiona
 @app.route("/api/<mod_id>/<season_id>/update", methods=["POST"])
 @api_key_authn(keys=[app.config.get("LADDER_API_KEY")])
 def update_ranking(mod_id, season_id):
+    """Update database for a specific season.
+
+    Refreshes player rating and ranking; updates highscores table
+    and player_season_history table.
+
+    Task will be executed in sequence as a background thread.
+    """
     season = MainDB.get_seasons()[mod_id][season_id]
-    if season:
-        print(season.dict())
-        app.logger.info(f"Updating ratings for {mod_id}/{season_id}")
+
+    def _background_task():
+        app.logger.debug(f"Updating ratings for {mod_id}/{season_id}")
         api_system.update_season_ratings(database=MainDB, season=season)
-        app.logger.info(f"Updating rankings for {mod_id}/{season_id}")
+        app.logger.debug(f"Updating rankings for {mod_id}/{season_id}")
         api_system.update_season_ranking(database=MainDB, season=season)
-        app.logger.info(f"Updating highscore for {mod_id}/{season.group}")
+        app.logger.debug(f"Updating highscore for {mod_id}/{season.group}")
         api_system.update_highscore(database=MainDB, mod_id=season.mod, season_group=season.group)
-        app.logger.info(f"Updating history table for {mod_id}/{season_id}")
+        app.logger.debug(f"Updating history table for {mod_id}/{season_id}")
         MainDB.update_season_history(mod_id=mod_id, season_id=season_id)
-        app.logger.info(f"Updating player_season_history table for {mod_id}/{season.id}")
+        app.logger.debug(f"Updating player_season_history table for {mod_id}/{season.id}")
         MainDB.update_player_season_history(mod_id=mod_id, season_id=season.id, season_group=season.group)
-    # ToDo: useful return
-    return jsonify(True)
+        app.logger.info(f"Completed update of ratings and subsequent information for {mod_id}/{season_id}.")
+
+    if season:
+        sequential_background_task_executor.submit(_background_task)
+        return jsonify(f"Scheduled database update for {mod_id}/{season_id}")
+    else:
+        return f"No such season: {mod_id}/{season_id}", 400
 
 
 @app.route("/api/rotate_current_season", methods=["POST"])
