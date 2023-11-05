@@ -18,10 +18,14 @@ from ladderweb.model._sql import CREATE_STATEMENTS
 class LadderDatabase:
     engine: sqlalchemy.engine.Engine
 
-    def exec(self, sql: str, fetch: bool = False):
+    def exec(self, sql: str, fetch: bool = False, transaction: Transaction = None):
         sql = sql.replace("\n", "").replace("\t", "")
-        with self.engine.connect() as conn:
-            with conn.begin():
+        if transaction is not None:
+            cursor = transaction.connection.execute(sql)
+            if fetch:
+                return cursor.fetchall()
+        else:
+            with self.engine.begin() as conn:
                 cursor = conn.execute(text(sql))
                 if fetch:
                     return cursor.fetchall()
@@ -87,7 +91,7 @@ class LadderDatabase:
         row = "'" + "', '".join([escape(str(v)) if v is not None else "" for v in values]) + "'"
         sql = f"""INSERT INTO {table} {cols} VALUES ({row})"""
         if transaction is not None:
-            transaction.connection.execute(sql)
+            self.exec(sql, transaction=transaction)
         else:
             self.exec(sql)
 
@@ -233,24 +237,24 @@ class LadderDatabase:
             (SELECT COUNT(r.rank) FROM ranking r
                 LEFT JOIN season s ON r.season_id=s.id AND r.mod=s.mod
                 WHERE profile_id=p.profile_id AND s.mod='{mod_id}' AND s.`group`='{group_id}'
-                AND rank=1 AND s.active='False') as 'first_place',
+                AND rank=1 AND s.active=0) as 'first_place',
             (SELECT COUNT(r.rank) FROM ranking r
                 LEFT JOIN season s ON r.season_id=s.id AND r.mod=s.mod
                 WHERE profile_id=p.profile_id  AND s.mod='{mod_id}' AND s.`group`='{group_id}'
-                AND rank=2 AND s.active='False')  as 'second_place',
+                AND rank=2 AND s.active=0)  as 'second_place',
             (SELECT COUNT(r.rank) FROM ranking r
                 LEFT JOIN season s ON r.season_id=s.id AND r.mod=s.mod
                 WHERE profile_id=p.profile_id
-                AND s.mod='{mod_id}' AND s.`group`='{group_id}' AND rank=3 AND s.active='False') as 'third_place',
+                AND s.mod='{mod_id}' AND s.`group`='{group_id}' AND rank=3 AND s.active=0) as 'third_place',
             (SELECT COUNT(r1.rank) FROM ranking r1
                 LEFT JOIN season s ON r1.season_id=s.id AND r1.mod=s.mod
-                WHERE r1.profile_id=p.profile_id  AND s.mod='{mod_id}' AND s.`group`='{group_id}' AND s.active='False'
+                WHERE r1.profile_id=p.profile_id  AND s.mod='{mod_id}' AND s.`group`='{group_id}' AND s.active=0
                 AND r1.rank<=(10*(SELECT COUNT(r2.profile_id) FROM ranking r2
                 WHERE r2.season_id=r1.season_id AND rank>0)/100)) as 'top_ten_percent',
             (SELECT COUNT(r.rank) FROM ranking r
                 LEFT JOIN season s ON r.season_id=s.id AND r.mod=s.mod
                 WHERE profile_id=p.profile_id AND s.mod='{mod_id}' AND s.`group`='{group_id}'
-                AND rank>0 AND s.active='False') as seasons,
+                AND rank>0 AND s.active=0) as seasons,
             (SELECT COUNT(DISTINCT g.hash) FROM SeasonGames g
                 LEFT JOIN season s ON g.season_id=s.id AND g.mod=s.mod
                 WHERE profile_id=g.profile_id0  AND s.`group`='{group_id}') as career_wins,
@@ -451,18 +455,18 @@ class LadderDatabase:
             if self.check_player_active_season(mod=mod, season_id=season.id, profile_id=profile_id):
                 if season.id not in _history.keys() or update_history:
                     select = f"""SELECT rank, rating, wins, losses, (wins+losses) as games, eligible, comment,
-                                    (
-                                        SELECT strftime('%M:%S', AVG(julianday(g.end_time) - julianday(g.start_time)))
-                                        FROM SeasonGames g
-                                        WHERE r.profile_id IN (g.profile_id0, g.profile_id1)
-                                        AND g.mod=r.mod AND g.season_id=r.season_id
-                                    ) AS avg_game_duration,
-                                    (
-                                        SELECT COUNT(rank) FROM ranking r2
-                                        WHERE r2.mod=r.mod AND r2.season_id=r.season_id
-                                    ) AS players
-                                    FROM ranking r
-                                    WHERE r.profile_id='{profile_id}' AND r.mod='{mod}' AND r.season_id='{season.id}';"""
+                        (
+                            SELECT strftime('%M:%S', AVG(julianday(g.end_time) - julianday(g.start_time)))
+                            FROM SeasonGames g
+                            WHERE r.profile_id IN (g.profile_id0, g.profile_id1)
+                            AND g.mod=r.mod AND g.season_id=r.season_id
+                        ) AS avg_game_duration,
+                        (
+                            SELECT COUNT(rank) FROM ranking r2
+                            WHERE r2.mod=r.mod AND r2.season_id=r.season_id
+                        ) AS players
+                        FROM ranking r
+                        WHERE r.profile_id='{profile_id}' AND r.mod='{mod}' AND r.season_id='{season.id}';"""
                     row: sqlalchemy.engine.row.Row = self.exec(select, fetch=True)[0]
                     stats = dict(row._mapping)
                     stats["ratio"] = "{:.2f}%".format(stats["wins"] / stats["games"] * 100)
@@ -470,7 +474,17 @@ class LadderDatabase:
                     stats["season_id"] = season.id
                     stats["mod_id"] = mod
                     stats["profile_id"] = profile_id
-                    self.batch_insert("player_season_history", batch=[stats])
+                    with self.engine.begin() as txn:
+                        # Remove prior entries from the table
+                        delete_sql = (
+                            f"DELETE FROM player_season_history "
+                            f"WHERE profile_id='{profile_id}' "
+                            f"AND mod_id='{mod}' "
+                            f"AND season_id='{season.id}'"
+                        )
+                        self.exec(delete_sql, transaction=txn)
+                        # Insert the updated information
+                        self.batch_insert("player_season_history", batch=[stats], transaction=txn)
                 else:
                     stats = _history[season.id]
                 stats["season"] = season.get_info()
