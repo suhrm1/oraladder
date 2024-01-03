@@ -38,12 +38,14 @@ class GamePlayerInfo:
 
 
 class GameResult:
-    def __init__(self, start_time, end_time, filename, player0, player1, map_uid, map_title):
-        self.start_time = start_time
-        self.end_time = end_time
+    def __init__(self, start_time, end_time, filename, player0, player1, map_uid, map_title, **kwargs):
+        self.start_time: datetime = (
+            start_time if isinstance(start_time, datetime) else datetime.fromisoformat(start_time)
+        )
+        self.end_time: datetime = end_time if isinstance(end_time, datetime) else datetime.fromisoformat(end_time)
         self.filename = op.abspath(filename)
-        self.player0 = player0
-        self.player1 = player1
+        self.player0: GamePlayerInfo = player0
+        self.player1: GamePlayerInfo = player1
         self.map_uid = map_uid
         self.map_title = map_title
 
@@ -72,7 +74,7 @@ def _parse_game_info(input_file):
     input_file.seek(-8, 2)
     length, end_marker = _read_data_fmt(input_file, "ii")
     if end_marker != -2:
-        raise Exception(f"Invalid end marker {end_marker}")
+        raise Exception(f"Invalid end marker {end_marker}, file: {input_file}")
     input_file.seek(-(length + 16), 1)
     start_marker, version = _read_data_fmt(input_file, "ii")
     if start_marker != -1:
@@ -84,8 +86,7 @@ def _parse_game_info(input_file):
     return miniyaml.load(game_yaml)
 
 
-def get_result(filename):
-
+def get_result(filename) -> GameResult:
     with open(filename, "rb") as f:
         game_info = _parse_game_info(f)
 

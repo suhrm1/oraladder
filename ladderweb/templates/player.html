@@ -4,14 +4,15 @@
 
 {% block content %}
 <h2>{{ player.profile_name }}</h2>
-{%if player.avatar_url %}<img class="avatar" src="{{ player.avatar_url }}" alt="{{ player.profile_name }}">{%endif%}
+{% if player.avatar_url %}
+<img class="avatar" src="{{ player.avatar_url }}" alt="{{ player.profile_name }}">
+{% endif %}
+{% if player.seasons>0 %}
 <p><strong>{{ player.profile_name }}</strong> has played {{ player.wins + player.losses }} games since
 	{{ player.first_game[:10] }}. They have won {{ player.wins }} games during
-	{{ (player.seasons | count)-1 }} seasons to reach their current all-time rank of
-	{{ player.rank }} at {{ player.rating }} points.</p>
-<p>Their games have lasted
+	{{ player.seasons }} seasons. Their games have lasted
 	{{ player.avg_game_duration }} minutes on average. {{ player.profile_name }} has
-	last played a game on ladder servers on {{ player.last_game[:10] }}</p>
+	last played a game on ladder servers on {{ player.last_game[:10] }}.</p>
 
 <h3>Alltime statistics</h3>
 <table id="player-alltime-info">
@@ -34,10 +35,11 @@
 		<td>{{ player.avg_game_duration }}</td>
 		<td>{{ player.first_game[:10] }}</td>
 		<td>{{ player.last_game[:10] }}</td>
-		<td>{{ (player.seasons | count)-1 }}</td>
+		<td>{{ player.seasons }}</td>
 	</tr>
 	</tbody>
 </table>
+
 <h3>Rankings</h3>
 <table id="player-rankings">
 	<thead>
@@ -53,13 +55,18 @@
 	</tr>
 	</thead>
 	<tbody>
-	{% for season in player.seasons %}
-	<tr {% if season.season.id== season_info.id %}style="font-weight: bold;" {% endif %}>
+	{% for season in player.season_history %}
+	<tr {% if season.season.id == season_info.id %}style="font-weight: bold;" {% endif %}{% if not season.eligible %}class="preliminary_ranking"{% endif %}>
 		<td {% if season.season.id !='all' %}
 			   title="{{ season.season.duration }} from {{ season.season.start }} until {{ season.season.end }}"
 			   {% endif %}>
 			<a href="{{ url_for('player', profile_id=player.profile_id, period=season.season.id) }}">{{ season.season.title }}</a></td>
-		<td>{% if season.trophy %}{{ season.trophy }}{% else %}{{ season.rank }}{% endif %}</td>
+		<td>{% if season.eligible %}
+			{% if season.trophy %}{{ season.trophy }}{% else %}<strong>{{ season.rank }}</strong>{% endif %} / {{ season.players }}
+			{% else %}
+			<strong><span title="{{ season.comment }}">🛈</span></strong>
+			{% endif %}
+		</td>
 		<td>{{ season.rating }}</td>
 		<td>{{ season.games }}</td>
 		<td>{{ season.wins }}</td>
@@ -71,7 +78,68 @@
 	</tbody>
 </table>
 
-<h2>Season statistics: {{ season_info.title }}</h2>
+{% if player.other_seasons %}
+
+
+<h3>Other Competition Results</h3>
+<table id="player-rankings">
+	<thead>
+	<tr>
+		<th>Season</th>
+		<th>Rank</th>
+		<th>Rating</th>
+		<th>Played</th>
+		<th>Wins</th>
+		<th>Losses</th>
+		<th>Win rate</th>
+		<th>Avg. game duration</th>
+	</tr>
+	</thead>
+	<tbody>
+	{% for season in player.other_seasons %}
+	<tr {% if season.season.id == season_info.id %}style="font-weight: bold;" {% endif %}{% if not season.eligible %}class="preliminary_ranking"{% endif %}>
+		<td {% if season.season.id !='all' %}
+			   title="{{ season.season.duration }} from {{ season.season.start }} until {{ season.season.end }}"
+			   {% endif %}>
+			<a href="{{ url_for('player', profile_id=player.profile_id, period=season.season.id) }}">{{ season.season.title }}</a></td>
+		<td>{% if season.eligible %}
+			{% if season.trophy %}{{ season.trophy }}{% else %}<strong>{{ season.rank }}</strong>{% endif %} / {{ season.players }}
+			{% else %}
+			<strong><span title="{{ season.comment }}">🛈</span></strong>
+			{% endif %}
+		</td>
+		<td>{{ season.rating }}</td>
+		<td>{{ season.games }}</td>
+		<td>{{ season.wins }}</td>
+		<td>{{ season.losses }}</td>
+		<td>{{ season.ratio }}</td>
+		<td>{{ season.avg_game_duration }}</td>
+	</tr>
+	{% endfor %}
+	</tbody>
+</table>
+
+{% endif %}
+
+{% else %}
+<div><p><strong>{{ player.profile_name }}</strong> has not played any ladder games for the selected mod.</p></div>
+{% endif %}
+
+{% if show_career_statistics is sameas true %}
+	{% if player.current_season %}
+	<!-- display the link back to selected season statistics if those are available -->
+	<h2 style="float: right; opacity: 0.4;">
+		<a href="{{ url_for('player', profile_id=player.profile_id, period=season_info.id, show_career_statistics=false) }}">show {{ season_info.title }}</a>
+	</h2>
+	{% endif %}
+	<h2 >Career statistics</h2>
+{% else %}
+	<h2 style="float: right; opacity: 0.4;">
+		<a href="{{ url_for('player', profile_id=player.profile_id, period=season_info.id, show_career_statistics=true) }}">show Career statistics</a>
+	</h2>
+	<h2>Season statistics: {{ season_info.title }}</h2>
+{% endif %}
+
 
 <h3>Latest games</h3>
 <table id="latest-player-games-table">
@@ -99,12 +167,50 @@ $(document).ready(
 				{ data: 'duration' },
 				{ data: 'replay', render: replay_render },
 			],
-			bSort: false,
+			bSort: true,
+			order: [[0, 'desc']]
 		});
 	}
 );
-
 </script>
+
+
+<h3>Opponent Statistics</h3>
+<table id="opponentStats" class="display">
+	<thead>
+	<tr>
+		<th>Opponent</th>
+		<th>Total Games</th>
+		<th>Won</th>
+		<th>Lost</th>
+		<th>Win Rate</th>
+	</tr>
+	</thead>
+	<tbody>
+	{% for opponent in opponent_stats %}
+	<tr>
+		<td class="map"><a href="{{ url_for('player', profile_id=opponent.opponent_id) }}">{{ opponent.opponent_name }}</a></td>
+		<td>{{ opponent.played }}</td>
+		<td>{{ opponent.wins }}</td>
+		<td>{{ opponent.losses }}</td>
+		<td>{{ opponent.win_rate }}</td>
+	</tr>
+	{% endfor %}
+	</tbody>
+</table>
+<script>
+$(document).ready(
+	function () {
+		$('#opponentStats').dataTable(
+			{
+				"ordering": true,
+				"order": [[1, 'desc'], [4, 'desc'], [0, 'asc']],
+			}
+		);
+	}
+);
+</script>
+
 
 <h3>Rating evolution</h3>
 {%if rating_stats.data %}
@@ -128,6 +234,7 @@ $(document).ready(
 {%else%}
 <p>Not enough data points</p>
 {%endif%}
+
 
 <h3>Preferred factions</h3>
 <canvas id="faction_chart"></canvas>
@@ -159,6 +266,7 @@ $(document).ready(
 	});
 </script>
 
+
 <h3>Map performances</h3>
 <canvas id="playermaps_chart"></canvas>
 <script>
@@ -182,4 +290,5 @@ $(document).ready(
 		}
 	});
 </script>
+
 {% endblock %}

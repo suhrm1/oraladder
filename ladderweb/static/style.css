@@ -1,14 +1,15 @@
 :root {
-	--color_bg: #171310;
+	--color_bg: #101010;
 	--color_hl: #454545;
+	--color_hl2: #ffb20090;
 	--color_thead: #6D2D27;
-	--color_row0: #383838;
-	--color_row1: #333333;
+	--color_row0: #282828;
+	--color_row1: #303030;
 	--color_text0: #E8E8E8;
 	--color_text1: #ffffff;
 	--color_light0: #D93D29;
 	--color_light1: #FFA78D;
-	--color_content: #272524;
+	--color_content: #191919;
 }
 
 html {
@@ -20,9 +21,9 @@ html {
 
 body {
 	background-color: var(--color_content);
-	max-width: 60em;
-	margin: 0.5em auto;
-	padding: 0.5em;
+	max-width: 80em;
+	margin: 0 auto;
+	padding: 1.5em;
 }
 
 a {
@@ -35,7 +36,7 @@ a:hover, a:focus, a:active {
 
 table {
 	margin: 0 auto;
-	width: 100%;
+	width: 98%;
 	border-collapse: collapse;
 	text-align: center;
 }
@@ -51,11 +52,11 @@ h1 {
 
 h2 {
 	border-bottom: 1px solid;
-	margin-top: 2.5em;
+	margin-top: 3em;
 }
 
 h3 {
-	margin-top: 1.5em;
+	margin-top: 3em;
 }
 
 table tbody tr:nth-child(odd) {
@@ -74,6 +75,49 @@ table tbody tr:hover {
 table thead tr {
 	color: var(--color_text1);
 	background-color: var(--color_thead);
+}
+
+table.dataTable th, table.dataTable td {
+  box-sizing: content-box;
+
+}
+
+table.dataTable thead th.sorting {
+    cursor: pointer;
+    position: relative;
+    text-align: left;
+    padding-left: 16px;
+}
+
+table.dataTable thead > tr > th.sorting::after,
+table.dataTable thead > tr > td.sorting::after {
+  top: 50%;
+  content: "▼";
+}
+
+table.dataTable thead > tr > th.sorting::before,
+table.dataTable thead > tr > td.sorting::before {
+  bottom: 50%;
+  content: "▲";
+}
+
+table.dataTable thead > tr > th.sorting::before,
+table.dataTable thead > tr > th.sorting::after,
+table.dataTable thead > tr > td.sorting::before,
+table.dataTable thead > tr > td.sorting::after {
+  position: absolute;
+  display: block;
+  opacity: .6;
+  left: 4px;
+  line-height: 8px;
+  font-size: .8em;
+}
+
+table.dataTable thead > tr > th.sorting_asc::before,
+table.dataTable thead > tr > th.sorting_desc::after,
+table.dataTable thead > tr > td.sorting_asc::before,
+table.dataTable thead > tr > td.sorting_desc::after {
+    opacity: .9;
 }
 
 table tbody td.player_avatar {
@@ -99,14 +143,21 @@ table tbody td.player_avatar a {
 	text-align: left;
 }
 
-table tbody td.player {
+table tbody td.player,td.map {
 	font-weight: bold;
 	text-align: left;
 }
 
-table tbody td.map {
-	font-weight: bold;
+table tbody td.rating {
 	text-align: left;
+}
+
+table tbody tr.preliminary_ranking {
+    opacity: 0.5;
+}
+
+table tbody tr.preliminary_ranking:hover {
+    opacity: 1.0;
 }
 
 img.avatar {
@@ -116,39 +167,10 @@ img.avatar {
 
 span.diffup   { font-weight: bold; color: #72ff72; }
 span.diffdown { font-weight: bold; color: #ff1a1a; }
+span.diffneutral { display: none; }
 span.diffup::after   { content: '▲'; }
 span.diffdown::after { content: '▼'; }
 span.ghost { color: darkgrey; font-style: italic; }
-
-nav ul {
-	list-style-type: none;
-	overflow: hidden;
-	background-color: var(--color_content);
-}
-
-nav li {
-	float: left;
-	margin: 2px;
-}
-
-nav li a {
-	display: block;
-	color: white;
-	text-align: center;
-	padding: 14px 16px;
-	text-decoration: none;
-	font-weight: bold;
-}
-
-nav li a:hover, nav li.active {
-	background-color: var(--color_hl);
-}
-
-nav li a.with_icon {
-	background-repeat: no-repeat;
-	background-position: left center;
-	padding-left: 34px;
-}
 
 dl#faq dt {
 	font-weight: bold;
@@ -163,6 +185,91 @@ dl#faq dd {
 	margin-left: 10px;
 	margin-top: 10px;
 	margin-bottom: 30px;
+}
+
+div.home_splash_image_container {
+    margin: 0 auto; width: fit-content;
+}
+
+div.home_splash_image {
+    width: 360px;
+    height: 180px;
+    display: inline-block;
+    margin: 0 20px;
+    /*
+    # Add bg-image URL in Jinja template
+	background-image: url({{ url_for('static', filename='splash_ra.png')}});
+	*/
+	background-repeat: no-repeat;
+	background-size: contain;
+	border: 1px solid var(--color_hl);
+}
+
+div.home_splash_image a img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+div.home_splash_image a:hover img:hover {
+    background-color: unset;
+}
+
+div.season_select_container {
+    display: flex;
+    overflow: auto;
+    margin: 16px auto;
+    font-size: 0.9em;
+    min-height: 32px;
+    padding-top: 6px;
+}
+
+div.season_select_container div {
+    display: block;
+    white-space: nowrap;
+    opacity: 0.7;
+    padding: 2px 8px;
+}
+
+div.season_select_container div.active {
+    font-weight: bold;
+    background: unset;
+    opacity: unset;
+}
+
+div.announcement-container {
+    width: 90%;
+    margin: 32px auto;
+    background: repeating-linear-gradient( 45deg, #000, #000 10px, var(--color_hl2) 10px, var(--color_hl2) 20px );
+    box-sizing: border-box;
+    padding: 1px;
+}
+
+div.announcement-content {
+    background: var(--color_bg);
+    margin: 2px;
+    box-sizing: border-box;
+    padding: 13px;
+    font-size: smaller;
+}
+
+div.footer {
+    width: 100%;
+    display: grid;
+    gap: 20px;
+    grid-auto-columns: auto;
+    opacity: 0.6;
+    margin-top: 60px;
+}
+div.footer > div {
+    display: inline;
+    grid-row: 1;
+    width: 100%;
+    text-align: center;
+}
+div.footer a {
+    font-weight: bold;
 }
 
 /* datatables garbage */

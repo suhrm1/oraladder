@@ -1,16 +1,7 @@
-{% extends 'base.html' %}
-
-{% block title %}Latest games{% endblock %}
+<h2>{% block title %}Latest games{% endblock %}</h2>
 
 {% block content %}
-{% if period_info %}
-	<div>
-		<p>
-			<strong>Selected Period</strong>: from <strong>{{ period_info.start }}</strong>
-			to <strong>{{ period_info.end }}</strong> ({{ period_info.duration }})
-		</p>
-	</div>
-{% endif %}
+
 <table id="latest-table">
 	<thead>
 		<tr>
@@ -27,7 +18,7 @@
 $(document).ready(
 	function () {
 		$('#latest-table').DataTable({
-			ajax: { url: "{{ ajax_url|safe }}", dataSrc:"" },
+			ajax: { url: "{{ games_ajax_url|safe }}", dataSrc:"" },
 			columns: [
 				{ data: 'date' },
 				{ data: 'map', className: 'map' },

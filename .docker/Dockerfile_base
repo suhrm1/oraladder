@@ -1,7 +1,7 @@
-FROM python:3.9-slim
+FROM python:3.10-slim
 
 RUN useradd -m -s /bin/bash openra \
-    && apt-get update && apt-get install -y --no-install-recommends make curl \
+    && apt-get update && apt-get install -y --no-install-recommends make curl nano sqlite3 \
     && apt-get clean
 
 RUN mkdir /home/openra/oraladder

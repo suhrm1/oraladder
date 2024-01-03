@@ -17,9 +17,11 @@
 
 from abc import ABC, abstractmethod
 
+from laddertools.model import OutCome, PlayerLookup
+
 
 class RankingBase(ABC):
-    def compute_ratings_from_series_of_games(self, games, player_lookup):
+    def compute_ratings_from_series_of_games(self, games, player_lookup) -> (PlayerLookup, [OutCome]):
         player_ratings = {}
         game_ratings = []
         for g in games:
@@ -34,7 +36,18 @@ class RankingBase(ABC):
 
             item = (r0_new, r1_new)
             game_ratings.append(item)
-        return game_ratings
+
+        outcomes = []
+        for result, (r0, r1) in zip(games, game_ratings):
+            p0 = player_lookup[result.player0]
+            p1 = player_lookup[result.player1]
+            p0.update_rating(r0)
+            p1.update_rating(r1)
+            p0.wins += 1
+            p1.losses += 1
+            outcomes.append(OutCome(result, p0, p1))
+        players = player_lookup.values()
+        return players, outcomes
 
     @classmethod
     @abstractmethod

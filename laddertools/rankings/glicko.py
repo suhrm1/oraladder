@@ -20,7 +20,8 @@ from itertools import count
 from datetime import timedelta
 from collections import deque, defaultdict
 
-from .abc import RankingBase
+from laddertools.rankings.abc import RankingBase
+from laddertools.model import OutCome
 
 
 class _RatingGlicko:
@@ -309,4 +310,16 @@ class RankingGlicko(RankingBase):
         # The order of ratings must match the order of games. That's why we
         # can't return `player_ratings_by_game.values()` directly, since
         # they are not processed in the same order as `games` appear.
-        return [player_ratings_by_game[g] for g in games]
+        game_ratings = [player_ratings_by_game[g] for g in games]
+
+        outcomes = []
+        for result, (r0, r1) in zip(games, game_ratings):
+            p0 = player_lookup[result.player0]
+            p1 = player_lookup[result.player1]
+            p0.update_rating(r0)
+            p1.update_rating(r1)
+            p0.wins += 1
+            p1.losses += 1
+            outcomes.append(OutCome(result, p0, p1))
+        players = player_lookup.values()
+        return players, outcomes

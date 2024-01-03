@@ -14,43 +14,47 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-import re
-import colorsys
+import datetime
+import json
 import os
 import os.path as op
-import json
-from sqlite3 import Connection
-from typing import Optional, Tuple
+from logging import Logger
+from typing import Tuple, Union, Optional
+from concurrent.futures import ThreadPoolExecutor
 
-import numpy as np
-import sqlite3
-from datetime import date, timedelta
 from flask import (
-    Flask,
     escape,
-    g,
     jsonify,
     render_template,
     request,
     send_file,
     url_for,
+    g,
+    Response,
 )
 
-from ladderweb.seasons import fill_yearly_seasons, get_season_info
-from .mods import mods
-
-
-# XXX: store in a file probably
-_cfg = dict(
-    min_datapoints=10,
-    datapoints=50,
+from ladderweb import api_system
+from ladderweb.model.seasons import Season
+from ladderweb._flask_utils import api_key_authn, create_app
+from ladderweb.model import LadderDatabase
+from ladderweb.mods import mods
+from ladderweb.utils import (
+    _get_colors,
+    _get_global_faction_stats,
+    _get_global_map_stats,
+    _get_activity_stats,
+    _stripped_map_name,
+    _get_player_ratings,
+    _get_player_faction_stats,
+    _get_player_map_stats,
+    cast_boolean,
 )
 
 
 def _get_request_params() -> Tuple[str, str, str]:
     """Extract HTTP request parameters for endpoint/URL route, mod, period."""
-    _allowed_mods = app.config["ALLOWED_MODS"]
-    _seasons = app.config["LADDER_SEASONS"]
+    _seasons = MainDB.get_seasons()
+    _allowed_mods = list(_seasons.keys())
     endpoint = request.endpoint
     mod = request.args.get("mod", _allowed_mods[0])
     if mod not in _allowed_mods:
@@ -63,61 +67,26 @@ def _get_request_params() -> Tuple[str, str, str]:
     return endpoint, mod, period
 
 
-def _filter_available_databases(seasons_dict: dict):
-    """Filters out all seasons/periods from the dictionary for which no database exists
-
-    Input dictionary should be created using seasons.fill_yearly_seasons method.
-    """
-    to_delete = []
-    for mod, seasons in seasons_dict.items():
-        for season_name, db_filename in seasons.items():
-            file = op.join(app.instance_path, db_filename)
-            if not op.exists(file):
-                to_delete.append((mod, season_name))
-    for mod, season_name in to_delete:
-        del seasons_dict[mod][season_name]
-    return seasons_dict
-
-
-def _db_get(db_filename: Optional[str] = None) -> Connection:
-    if db_filename is not None:
-        dbname = db_filename
-        db = op.join(app.instance_path, dbname)
-        conn = sqlite3.connect(db, detect_types=sqlite3.PARSE_DECLTYPES)
-        conn.row_factory = sqlite3.Row
-        return conn
-    elif "db" not in g:
-        _, mod, period = _get_request_params()
-        dbname = app.config.get("LADDER_SEASONS")[mod][period]
-        db = op.join(app.instance_path, dbname)
-        app.logger.debug(f"Opening database file {db}")
-        g.db = sqlite3.connect(db, detect_types=sqlite3.PARSE_DECLTYPES)
-        g.db.row_factory = sqlite3.Row
-    return g.db
-
-
-def _db_close(e=None):
-    db = g.pop("db", None)
-    if db is not None:
-        db.close()
-
-
-def create_app():
-    app = Flask(__name__)
-    app.teardown_appcontext(_db_close)
-    return app
-
-
+# Initialize the Flask application
 app = create_app()
-app.config.from_prefixed_env()
-app.config["LADDER_SEASONS"] = _filter_available_databases(
-    fill_yearly_seasons(
-        start_year=app.config.get("LADDER_SEASONS_START_YEAR", date.today().year),
-        start_month=app.config.get("LADDER_SEASONS_START_MONTH", 1),
-    )
+logger: Logger = app.logger
+
+db_settings = {
+    "bans_file": app.config.get("LADDER_BANS_FILE", "instance/banned_profiles"),
+    "ra_default_replay_folder": app.config.get("LADDER_RA_DEFAULT_REPLAY_FOLDER", "/replays/ra"),
+    "td_default_replay_folder": app.config.get("LADDER_TD_DEFAULT_REPLAY_FOLDER", "/replays/td"),
+    "deleted_replay_folder": app.config.get("LADDER_DELETED_REPLAY_FOLDER", app.instance_path + "/deleted_replays/"),
+}
+
+MainDB = LadderDatabase(
+    connection_string=app.config.get("LADDER_MAIN_DATABASE", f"sqlite:///{app.instance_path}/ladder.db"),
+    settings=db_settings,
+    season_config_dir=app.instance_path,
+    logger=logger,
 )
-app.config["ALLOWED_MODS"] = list(app.config["LADDER_SEASONS"].keys())
-app.logger.debug(f"Loaded available mods and seasons: {app.config['LADDER_SEASONS']}")
+
+# Initialize a background task pool
+sequential_background_task_executor = ThreadPoolExecutor(1)
 
 
 @app.context_processor
@@ -157,9 +126,10 @@ def _get_menu(**args):
                 active=endpoint == cur_endpoint,
             )
             for caption, endpoint in (
-                ("Leaderboard", "leaderboard"),
-                ("Latest games", "latest_games"),
-                ("Global stats", "globalstats"),
+                ("Home", "home"),
+                ("Ladder", "ladder"),
+                ("High Score", "highscore"),
+                ("History", "history"),
                 ("Information", "info"),
             )
         ],
@@ -178,143 +148,299 @@ def _get_menu(**args):
     if len(mods_menu) > 1:
         ret["mods"] = mods_menu
 
-    period_pages = {"leaderboard", "latest_games", "player", "globalstats"}
+    return ret
 
-    periods = app.config["LADDER_SEASONS"][cur_mod]
+
+def _get_seasons_menu(season_group: str = "seasons", **args) -> dict:
+    cur_endpoint, cur_mod, cur_period = _get_request_params()
+    _seasons: dict[Season] = {s.id: s for s in MainDB.get_seasons()[cur_mod].values() if s.group == season_group}
     period_options = []
-    for period in periods.keys():
-        if period == "2m":
-            caption = "Current season"
-        elif period == "all":
-            caption = "All time"
-        else:
-            caption = period
-        period_options.append((caption, period))
-
-    if cur_endpoint in period_pages:
-        ret["period"] = [
-            dict(
-                caption=caption,
-                url=url_for(cur_endpoint, **args) + _args_url(period=period),
-                active=period == cur_period,
-            )
-            for caption, period in period_options
-        ]
-
+    for _season in _seasons.values():
+        period_options.append((_season.title, _season.id))
+    ret = [
+        {
+            "caption": caption,
+            "url": url_for(cur_endpoint, **args) + _args_url(period=period),
+            "active": period == cur_period,
+        }
+        for caption, period in period_options
+    ]
     return ret
 
 
 @app.route("/")
-def leaderboard():
+@app.route("/home")
+def home():
     menu = _get_menu()
     ajax_url = url_for("leaderboard_js") + _args_url()
     _, cur_mod, cur_period = _get_request_params()
+    season: Season = MainDB.get_seasons()[cur_mod][cur_period]
     return render_template(
-        "leaderboard.html",
+        "home.html",
         navbar_menu=menu,
         ajax_url=ajax_url,
-        period_info=get_season_info(cur_period) if cur_period != "all" else None,
+        period_info=season.get_info() if cur_period != "all" else None,
+        mod_id=cur_mod,
+    )
+
+
+@app.route("/highscore")
+def highscore():
+    menu = _get_menu()
+    cur_endpoint, cur_mod, cur_season = _get_request_params()
+    _highscore: [dict] = MainDB.fetch_table("highscore", condition=f"mod_id='{cur_mod}' AND season_group='seasons'")
+    banned_player_offset = 0
+    for i, row in enumerate(_highscore, start=1):
+        row["rank"] = i - banned_player_offset
+
+    return render_template(
+        "highscore.html",
+        navbar_menu=menu,
+        mod_id=cur_mod,
+        season_id=cur_season,
+        highscore=_highscore,
+    )
+
+
+@app.route("/history")
+def history():
+    cur_mod = _get_request_params()[1]
+
+    # Human-readable titles for potential season groups
+    _season_group_title_lookup = {"seasons": "Seasons", "other": "Other Competitions"}
+
+    _algorithms = {algo["id"]: algo for algo in MainDB.fetch_table(table="algorithm")}
+
+    _season_stats = MainDB.get_all_season_stats(mod=cur_mod)
+    for s in _season_stats:
+        s["algorithm"] = _algorithms[s["algorithm"]]
+
+    # group season info dictionaries by display group
+    _seasons = [
+        (_season_group_title_lookup[group_id], [s for s in _season_stats if s["season_group"] == group_id])
+        for group_id in _season_group_title_lookup.keys()
+    ]
+
+    return render_template(
+        "history.html",
+        navbar_menu=_get_menu(),
+        mod_id=cur_mod,
+        seasons=_seasons,
+    )
+
+
+@app.route("/ladder")
+def ladder():
+    menu = _get_menu()
+    seasons_menu = _get_seasons_menu()
+    scoreboard_ajax_url = url_for("leaderboard_js") + _args_url()
+    latest_games_ajax_url = url_for("latest_games_js") + _args_url()
+    _, cur_mod, cur_period = _get_request_params()
+    season: Season = MainDB.get_seasons()[cur_mod][cur_period]
+
+    season_info = season.get_info()
+    if season_info is not None:
+        season_info["algorithm"] = MainDB.fetch_table("algorithm", condition=f"id='{season.algorithm}'")[0]
+
+    return render_template(
+        "ladder.html",
+        navbar_menu=menu,
+        seasons_menu=seasons_menu,
+        period_info=season_info,
+        mod_id=cur_mod,
+        scoreboard_ajax_url=scoreboard_ajax_url,
+        games_ajax_url=latest_games_ajax_url,
+        season_stats=MainDB.get_season_stats(mod=cur_mod, season_id=season.id),
+        faction_stats=_get_global_faction_stats(MainDB, mod=cur_mod),
+        map_stats=_get_global_map_stats(MainDB, season),
+        activity_stats=_get_activity_stats(MainDB, season),
+    )
+
+
+@app.route("/player/<int:profile_id>")
+def player(profile_id):
+    _, cur_mod, cur_period = _get_request_params()
+    show_career_statistics = request.args.get("show_career_statistics", False) in ["True", "true"]
+    current: Season = MainDB.get_seasons()[cur_mod][cur_period]
+
+    _menu = _get_menu(profile_id=profile_id)
+
+    _now = datetime.datetime.now
+
+    if not MainDB.check_player_active_mod(mod=cur_mod, profile_id=profile_id):
+        # ToDo: display general player info even if not active in this mod
+        return render_template("noplayer.html", navbar_menu=_menu, profile_id=profile_id, mod_id=cur_mod)
+    else:
+        _start = _now()
+        _player = MainDB.get_player_info(profile_id, mod_id=cur_mod)
+        app.logger.debug(f"Profile load time, get_player_info: {_now() - _start}")
+
+    active_in_current_season = MainDB.check_player_active_season(
+        mod=cur_mod, season_id=cur_period, profile_id=profile_id
+    )
+    _player["current_season"] = active_in_current_season
+
+    # Collect player history information
+    _start = _now()
+    _player["season_history"] = list(MainDB.get_player_season_history(mod=cur_mod, profile_id=profile_id).values())
+    app.logger.debug(f"Profile load time, get_player_season_history: {_now() - _start}")
+
+    _start = _now()
+    _player["other_seasons"] = list(
+        MainDB.get_player_season_history(mod=cur_mod, profile_id=profile_id, season_group="other").values()
+    )
+    app.logger.debug(f"Profile load time, get_player_season_history/other_seasons: {_now() - _start}")
+
+    if not active_in_current_season:
+        # We will display career statistics
+        show_career_statistics = True
+
+    _start = _now()
+    _cur_season = None if show_career_statistics else cur_period
+
+    if show_career_statistics:
+        # Take final rating at the end of each season, sort chronologically by season end date
+        rating_history = sorted(
+            [
+                # 3-tuple: end_date, rating, season title
+                (s["season"]["end"], s["rating"], s["season"]["title"])
+                for s in _player["season_history"]
+            ],
+            key=lambda x: x[0],
+        )
+        rating_stats = dict(
+            # use season title as label
+            labels=list(map(lambda x: x[2], rating_history)),
+            data=list(map(lambda x: x[1], rating_history)),
+        )
+    else:
+        # get current season's ratings over time
+        rating_stats = _get_player_ratings(MainDB, mod=cur_mod, season_id=_cur_season, profile_id=profile_id)
+
+    app.logger.debug(f"Profile load time, _get_player_ratings: {_now() - _start}")
+
+    _start = _now()
+    opponent_stats = MainDB.get_player_opponent_statistics(mod=cur_mod, player_id=profile_id, season_id=_cur_season)
+    app.logger.debug(f"Opponent stats load time, MainDB.get_player_opponent_statistics: {_now() - _start}")
+
+    _start = _now()
+    faction_stats = _get_player_faction_stats(MainDB, mod=cur_mod, profile_id=profile_id, season_id=_cur_season)
+    app.logger.debug(f"Profile load time, _get_player_faction_stats: {_now() - _start}")
+
+    _start = _now()
+    map_stats = _get_player_map_stats(MainDB, mod=cur_mod, profile_id=profile_id, season_id=_cur_season)
+    app.logger.debug(f"Profile load time, _get_player_map_stats: {_now() - _start}")
+
+    ajax_url = url_for("player_games_js", profile_id=profile_id) + _args_url(
+        show_career_statistics=show_career_statistics
+    )
+
+    return render_template(
+        "player.html",
+        navbar_menu=_menu,
+        player=_player,
+        ajax_url=ajax_url,
+        rating_stats=rating_stats,
+        opponent_stats=opponent_stats,
+        faction_stats=faction_stats,
+        map_stats=map_stats,
+        mod_id=cur_mod,
+        season_info=current.get_info(),
+        show_career_statistics=show_career_statistics,
+    )
+
+
+@app.route("/about")
+@app.route("/info")
+def info():
+    menu = _get_menu()
+    _, cur_mod, cur_period = _get_request_params()
+    season = MainDB.get_seasons()[cur_mod]["2m"]
+    return render_template(
+        "info.html",
+        navbar_menu=menu,
+        period_info=season.get_info(),
+        mod=mods[cur_mod],
         mod_id=cur_mod,
     )
 
 
 @app.route("/leaderboard-js")
+@app.route("/api/leaderboard")
 def leaderboard_js():
-    db = _db_get()
-    cur = db.execute(
-        """
-        SELECT
-            profile_id,
-            profile_name,
-            avatar_url,
-            wins,
-            losses,
-            prv_rating,
-            rating
-        FROM players
-        WHERE rating > 0 AND NOT banned
-        ORDER BY rating DESC
-        """
-    )
+    # requires HTTP request parameters "mod" and "period"
+    _, mod, season_id = _get_request_params()
+    data = MainDB.get_leaderboard(mod=mod, season_id=season_id)
 
     rows = []
-    for i, (profile_id, profile_name, avatar_url, wins, losses, prv_rating, rating) in enumerate(cur, 1):
+    for row in data:
         rows.append(
             dict(
-                row_id=i,
+                row_id=row["rank"],
                 player=dict(
-                    name=escape(profile_name),
-                    url=url_for("player", profile_id=profile_id) + _args_url(),
-                    avatar_url=avatar_url,
+                    name=row["profile_name"],
+                    url=url_for("player", profile_id=row["profile_id"]) + _args_url(),
+                    avatar_url=row["avatar_url"],
                 ),
                 rating=dict(
-                    value=rating,
-                    diff=rating - prv_rating,
+                    value=row["rating"],
+                    diff=row["difference"],
                 ),
-                played=wins + losses,
-                wins=wins,
-                losses=losses,
-                winrate=wins / (wins + losses) * 100,
+                played=row["wins"] + row["losses"],
+                wins=row["wins"],
+                losses=row["losses"],
+                winrate=row["wins"] / (row["wins"] + row["losses"]) * 100,
+                rank={
+                    "rank": row["rank"],
+                    "is_official": cast_boolean(row["eligible"]),
+                    "comment": row["comment"],
+                },
             )
         )
 
     return jsonify(rows)
 
 
-@app.route("/latest")
-def latest_games():
-    _, cur_mod, cur_period = _get_request_params()
-    menu = _get_menu()
-    ajax_url = url_for("latest_games_js") + _args_url()
-    return render_template(
-        "latest.html", navbar_menu=menu, ajax_url=ajax_url, period_info=get_season_info(cur_period), mod_id=cur_mod
-    )
-
-
-_tag_regex = re.compile(r"\s*\[[^\]]*\]")
-
-
-def _stripped_map_name(map_name):
-    return _tag_regex.sub("", map_name).strip()
-
-
 @app.route("/latest-js")
+@app.route("/api/games")
 def latest_games_js():
-    _, cur_mod, _ = _get_request_params()
-    db = _db_get()
-    cur = db.execute(
-        """
-        SELECT
-            hash,
-            end_time,
-            strftime('%M:%S', julianday(end_time) - julianday(start_time)) AS duration,
-            profile_id0,
-            profile_id1,
-            rating_0 - rating_0_prv AS diff0,
-            rating_1 - rating_1_prv AS diff1,
-            p0.profile_name AS p0_name,
-            p1.profile_name AS p1_name,
-            p0.banned AS p0_banned,
-            p1.banned AS p1_banned,
-            map_title
-        FROM outcomes o
-        LEFT JOIN players p0 ON p0.profile_id = o.profile_id0
-        LEFT JOIN players p1 ON p1.profile_id = o.profile_id1
-        ORDER BY o.end_time DESC
-        """
-    )
-    matches = cur.fetchall()
-    cur.close()
+    _endpoint, cur_mod, _season_id = _get_request_params()
+    app.logger.debug(f"Requested {_endpoint}, args: {request.args}.")
+    if "period" not in request.args:
+        app.logger.debug(f"Season ID not specified, trying to infer requested set of games.")
+        if "start" in request.args:
+            start_date = datetime.date.fromisoformat(request.args["start"])
+            if "end" in request.args:
+                end_date = datetime.date.fromisoformat(request.args["end"]) + datetime.timedelta(days=1)
+            else:
+                end_date = datetime.date.today() + datetime.timedelta(days=1)
+            app.logger.debug(f"Collecting games played between {start_date} and {end_date}.")
+            condition = (
+                f"mod='{cur_mod}' AND end_time>='{start_date.isoformat()}' "
+                f"AND end_time<='{end_date.isoformat()}' ORDER BY end_time DESC"
+            )
+        else:
+            # period/season has not been explicitly specified,
+            # we imply that all games from past 14 days shall be returned
+            end_date = datetime.date.today() - datetime.timedelta(days=14)
+            app.logger.debug(f"Collecting last 14 days' games.")
+            condition = f"mod='{cur_mod}' AND end_time>='{end_date.isoformat()}' ORDER BY end_time DESC"
+    else:
+        condition = f"mod='{cur_mod}' AND season_id='{_season_id}' ORDER BY end_time DESC"
 
-    games = []
+    matches = MainDB.fetch_table("SeasonGames", condition=condition)
+
+    games = {}
     for match in matches:
+        p0_banned = match["p0_banned"] == "True"
+        p1_banned = match["p1_banned"] == "True"
         game = dict(
             replay=dict(
                 hash=match["hash"],
                 url=url_for("replay", replay_hash=match["hash"]) + _args_url(),
                 supports_analysis=mods[cur_mod].get("supports_analysis", False),
             )
-            if not any((match["p0_banned"], match["p1_banned"]))
+            if not (p0_banned or p1_banned)
             else None,
             date=match["end_time"],
             duration=match["duration"],
@@ -324,427 +450,253 @@ def latest_games_js():
                 url=url_for("player", profile_id=match["profile_id0"]) + _args_url(),
                 diff=match["diff0"],
             )
-            if not match["p0_banned"]
+            if not p0_banned
             else None,
             p1=dict(
                 name=escape(match["p1_name"]),
                 url=url_for("player", profile_id=match["profile_id1"]) + _args_url(),
                 diff=match["diff1"],
             )
-            if not match["p1_banned"]
+            if not p1_banned
             else None,
         )
-        games.append(game)
+        # use a dictionary instead of list to filter out potential duplicate entries (due to games being recorded into
+        # multiple seasons)
+        games[match["hash"]] = game
 
-    return jsonify(games)
-
-
-def _scaled(a, m):
-    n = len(a)
-    nr = range(n)
-    mr = [x * n / m for x in range(m)]
-    return [round(x) for x in np.interp(mr, nr, a)]
+    games_list = list(games.values())
+    return jsonify(games_list)
 
 
-def _get_player_ratings(db, profile_id):
-    cur = db.execute(
-        """
-        SELECT
-            profile_id0,
-            profile_id1,
-            rating_0,
-            rating_1
-        FROM outcomes o
-        LEFT JOIN players p0 ON p0.profile_id = o.profile_id0
-        LEFT JOIN players p1 ON p1.profile_id = o.profile_id1
-        WHERE :pid IN (o.profile_id0, o.profile_id1)
-        ORDER BY o.end_time""",
-        dict(pid=profile_id),
-    )
-    ratings = []
-    for match in cur:
-        if match["profile_id0"] == profile_id:
-            rating = match["rating_0"]
-        elif match["profile_id1"] == profile_id:
-            rating = match["rating_1"]
-        else:
-            continue  # XXX shouldn't happen, assert?
-        ratings.append(rating)
-    cur.close()
-
-    ratings = ratings[_cfg["min_datapoints"] :]
-    if not ratings:
-        return [], []
-
-    datapoints = _cfg["datapoints"]
-    rating_labels = [str("") for x in range(datapoints)]
-    rating_labels = json.dumps(rating_labels)
-
-    ratings = _scaled(ratings, datapoints)  # rescale all ratings to a fixed number of data points
-    rating_data = json.dumps(ratings)
-
-    return dict(
-        labels=rating_labels,
-        data=rating_data,
-    )
+@app.route("/replay/<replay_hash>")
+@app.route("/api/games/<replay_hash>")
+def replay(replay_hash):
+    fullpath = MainDB.get_replay_filename(hash=replay_hash)
+    return send_file(fullpath, as_attachment=True)
 
 
-def _get_player_season_history(mod, profile_id):
-    seasons = app.config["LADDER_SEASONS"][mod]
-    player_season_history = []
-    for season_name, db_filename in seasons.items():
-        db_file = op.join(app.instance_path, db_filename)
-        with _db_get(db_file) as db:
-            row = db.execute(
-                f"""select rating, wins, losses, (wins+losses) as games,
-                (
-                    SELECT strftime('%M:%S', AVG(julianday(end_time) - julianday(start_time)))
-                    FROM outcomes
-                    WHERE {profile_id} IN (profile_id0, profile_id1)
-                ) AS avg_game_duration
-                from players where profile_id={profile_id}"""
-            ).fetchone()
-            if row is not None:
-                stats = dict(row)
-                rank = db.execute(
-                    f"""select count(profile_id) from players
-                    where rating>{stats['rating']} AND NOT banned"""
-                ).fetchone()[0]
-
-                stats["rank"] = rank + 1
-                stats["trophy"] = ""
-                if rank < 3:
-                    stats["trophy"] = ["🥇", "🥈", "🥉"][rank]
-                stats["ratio"] = "{:.2f}%".format(stats["wins"] / stats["games"] * 100)
-                stats["season"] = get_season_info(season_name)
-
-                player_season_history.append(stats)
-    return player_season_history
-
-
-def _get_player_info(db, profile_id):
-    cur = db.execute(
-        """
-        SELECT
-        *, (
-            SELECT COUNT(*)
-            FROM players
-            WHERE rating >= (SELECT rating FROM players WHERE profile_id=:pid) AND NOT banned
-        ) AS rank,
-        (
-            SELECT strftime('%M:%S', AVG(julianday(end_time) - julianday(start_time)))
-            FROM outcomes
-            WHERE :pid IN (profile_id0, profile_id1)
-        ) AS avg_game_duration,
-        (
-            SELECT MIN(end_time) FROM outcomes
-            WHERE :pid IN (profile_id0, profile_id1)
-        ) AS first_game,
-        (
-            SELECT MAX(end_time) FROM outcomes
-            WHERE :pid IN (profile_id0, profile_id1)
-        ) AS last_game
-        FROM players WHERE profile_id=:pid AND NOT banned
-        LIMIT 1""",
-        dict(pid=profile_id),
-    )
-    player = cur.fetchone()
-    cur.close()
-    return player
-
-
-def _get_player_faction_stats(db, profile_id):
-    cur = db.execute(
-        """
-        SELECT COUNT(*)/2 AS count,
-            (CASE
-            WHEN o.profile_id0=:pid THEN selected_faction_0
-            WHEN o.profile_id1=:pid THEN selected_faction_1
-        END) AS faction
-        FROM outcomes o LEFT JOIN players p ON p.profile_id IN (o.profile_id0, o.profile_id1)
-        WHERE :pid IN (o.profile_id0, o.profile_id1)
-        GROUP BY faction""",
-        dict(pid=profile_id),
-    )
-    hist = [(r["faction"], r["count"]) for r in cur]
-    cur.close()
-    faction_names, faction_data = zip(*hist)
-    faction_colors = _get_colors(len(hist))
-    return dict(
-        names=list(faction_names),
-        data=list(faction_data),
-        total=sum(faction_data),
-        colors=faction_colors,
-    )
-
-
-def _get_player_map_stats(db, profile_id):
-    cur = db.execute(
-        """
-        SELECT COUNT(*) AS count, map_title FROM outcomes WHERE profile_id0=:pid GROUP BY map_title""",
-        dict(pid=profile_id),
-    )
-    hist_wins = {r["map_title"]: r["count"] for r in cur}
-    cur.close()
-
-    cur = db.execute(
-        """
-        SELECT -COUNT(*) AS count, map_title FROM outcomes WHERE profile_id1=:pid GROUP BY map_title""",
-        dict(pid=profile_id),
-    )
-    hist_losses = {r["map_title"]: r["count"] for r in cur}
-    cur.close()
-
-    map_names = sorted(list(set(hist_wins.keys()) | set(hist_losses.keys())))
-    map_win_data = [hist_wins.get(m, 0) for m in map_names]
-    map_loss_data = [hist_losses.get(m, 0) for m in map_names]
-    return dict(
-        names=map_names,
-        win_data=map_win_data,
-        loss_data=map_loss_data,
-    )
+@app.route("/api/games/<replay_hash>", methods=["DELETE"])
+@api_key_authn(keys=[app.config.get("LADDER_API_KEY")])
+def delete_replay(replay_hash):
+    res = api_system.delete_replay(database=MainDB, hash=replay_hash)
+    if res:
+        app.logger.info(f'Deleted replay {res["hash"]}')
+        return jsonify({"deleted": res["hash"]})
+    else:
+        app.logger.info(f"Could not delete replay {replay_hash}, not found in database")
+        return Response(status=422)
 
 
 @app.route("/player-games-js/<int:profile_id>")
+@app.route("/api/player/<int:profile_id>/games")
 def player_games_js(profile_id):
-    _, cur_mod, _ = _get_request_params()
-    db = _db_get()
-    cur = db.execute(
-        """
-        SELECT
-            hash,
-            end_time,
-            strftime('%M:%S', julianday(end_time) - julianday(start_time)) AS duration,
-            profile_id0,
-            profile_id1,
-            rating_0 - rating_0_prv AS diff0,
-            rating_1 - rating_1_prv AS diff1,
-            p0.profile_name AS p0_name,
-            p1.profile_name AS p1_name,
-            p0.banned AS p0_banned,
-            p1.banned AS p1_banned,
-            map_title
-        FROM outcomes o
-        LEFT JOIN players p0 ON p0.profile_id = o.profile_id0
-        LEFT JOIN players p1 ON p1.profile_id = o.profile_id1
-        WHERE :pid in (o.profile_id0, o.profile_id1)
-        ORDER BY o.end_time DESC
-        """,
-        dict(pid=profile_id),
+    _, cur_mod, cur_season = _get_request_params()
+    show_career_statistics = request.args.get("show_career_statistics", False) in ["True", "true"]
+    if show_career_statistics:
+        season_condition = ""
+        table = "SeasonGames"
+    else:
+        season_condition = f"AND season_id='{cur_season}' "
+        table = "SeasonGames"
+
+    condition = (
+        f"mod='{cur_mod}' {season_condition}"
+        f"AND (profile_id0='{profile_id}' OR profile_id1='{profile_id}') "
+        f"ORDER BY end_time DESC"
     )
+    player_games = MainDB.fetch_table(table, condition=condition, distinct=True)
     games = []
-    for match in cur:
+    for match in player_games:
         if match["profile_id0"] == profile_id:
             diff = match["diff0"]
             opponent = escape(match["p1_name"])
             opponent_id = match["profile_id1"]
-            opponent_banned = match["p1_banned"]
-            banned = match["p0_banned"]
+            opponent_banned = cast_boolean(match["p1_banned"])
+            banned = cast_boolean(match["p0_banned"])
             outcome = "Won"
-        elif match["profile_id1"] == profile_id:
+        else:
             diff = match["diff1"]
             opponent = escape(match["p0_name"])
             opponent_id = match["profile_id0"]
-            opponent_banned = match["p0_banned"]
-            banned = match["p1_banned"]
+            opponent_banned = cast_boolean(match["p0_banned"])
+            banned = cast_boolean(match["p1_banned"])
             outcome = "Lost"
-        else:
-            continue  # XXX shouldn't happen, assert?
-        if banned:
-            break
-        game = dict(
-            date=match["end_time"],
-            opponent=dict(
-                name=opponent,
-                url=url_for("player", profile_id=opponent_id) + _args_url(),
-                # avatar_url=avatar_url,
+        if show_career_statistics:
+            # remove rating points
+            diff = None
+        if not (banned or opponent_banned):
+            game = dict(
+                date=match["end_time"],
+                opponent=dict(
+                    name=opponent,
+                    url=url_for("player", profile_id=opponent_id) + _args_url(),
+                ),
+                map=_stripped_map_name(match["map_title"]),
+                outcome=dict(
+                    desc=outcome,
+                    diff=diff,
+                ),
+                duration=match["duration"],
+                replay=dict(
+                    hash=match["hash"],
+                    url=url_for("replay", replay_hash=match["hash"]) + _args_url(),
+                    supports_analysis=mods[cur_mod].get("supports_analysis", False),
+                ),
             )
-            if not opponent_banned
-            else None,
-            map=_stripped_map_name(match["map_title"]),
-            outcome=dict(
-                desc=outcome,
-                diff=diff,
-            ),
-            duration=match["duration"],
-            replay=dict(
-                hash=match["hash"],
-                url=url_for("replay", replay_hash=match["hash"]) + _args_url(),
-                supports_analysis=mods[cur_mod].get("supports_analysis", False),
-            )
-            if not opponent_banned
-            else None,
-        )
-        games.append(game)
-    cur.close()
-
+            games.append(game)
+        if show_career_statistics:
+            # deduplicate
+            games_strings = [json.dumps(g) for g in games]
+            unique_game_strings = list(set(games_strings))
+            games = [json.loads(gstr) for gstr in unique_game_strings]
     return jsonify(games)
 
 
-@app.route("/player/<int:profile_id>")
-def player(profile_id):
-    db = _db_get()
-    _, cur_mod, cur_period = _get_request_params()
-    alltime_db_name = app.config["LADDER_SEASONS"][cur_mod]["all"]
-    alltime_db = _db_get(alltime_db_name)
-    menu = _get_menu(profile_id=profile_id)
+@app.route("/api/system/refresh", methods=["POST"])
+@api_key_authn(keys=[app.config.get("LADDER_API_KEY")])
+def system_refresh():
+    app.logger.debug("Initializing system refresh")
 
-    # load current period database first to see if player was active during this
-    player = _get_player_info(db, profile_id)
-    if not player:
-        return render_template("noplayer.html", navbar_menu=menu, profile_id=profile_id, mod_id=cur_mod)
+    request_payload: Union[dict, None] = request.get_json() if request.is_json else None
+    app.logger.debug(f"JSON payload: {request_payload}")
 
-    # load all-time player data for all-time information
-    player = _get_player_info(alltime_db, profile_id)
-    player = dict(player)
+    skip_inactive = True
+    do_parse_replays = True
+    max_file_age_days = 7
 
-    player["seasons"] = _get_player_season_history(mod=cur_mod, profile_id=profile_id)
-    ajax_url = url_for("player_games_js", profile_id=profile_id) + _args_url()
+    if request_payload is not None:
+        skip_inactive = cast_boolean(request_payload.get("skip_inactive", True))
+        do_parse_replays = cast_boolean(request_payload.get("parse_replays", True))
+        max_file_age_days = int(request_payload.get("max_file_age_days", 7))
 
-    return render_template(
-        "player.html",
-        navbar_menu=menu,
-        player=player,
-        ajax_url=ajax_url,
-        rating_stats=_get_player_ratings(db, profile_id),
-        faction_stats=_get_player_faction_stats(db, profile_id),
-        map_stats=_get_player_map_stats(db, profile_id),
-        mod_id=cur_mod,
-        season_info=get_season_info(cur_period),
+    app.logger.debug(f"Param skip_inactive: {skip_inactive}")
+    app.logger.debug(f"Param do_parse_replays: {do_parse_replays}")
+    app.logger.debug(f"Param max_file_age_days: {max_file_age_days}")
+
+    seasons = MainDB.get_seasons()
+
+    for mod in seasons.keys():
+        if do_parse_replays:
+            parsing_result = parse_replays(
+                mod_id=mod, skip_inactive=skip_inactive, max_file_age_days=max_file_age_days
+            ).json
+            app.logger.debug(
+                f"Parsed {parsing_result['replays_parsed']} replays "
+                f"for mod {mod} in {parsing_result['processing_time']} "
+            )
+            if parsing_result["replays_parsed"] < 1:
+                # Don't do any further processing if no new replays have been parsed
+                app.logger.debug(f"Skipping update procedures for mod {mod}")
+                continue
+
+        # Try and rotate the currently active period
+        # (i.e. create a new running season if the last one reached its designated end date)
+        rotate_season(mod_id=mod)
+
+        for season_id, season in seasons[mod].items():
+            if season_id:
+                if skip_inactive and not season.active:
+                    continue
+                update_ranking(mod_id=mod, season_id=season_id)
+    # ToDo: useful return
+    return jsonify(True)
+
+
+@app.route("/api/system/update_rankings", methods=["POST"])
+@api_key_authn(keys=[app.config.get("LADDER_API_KEY")])
+def update_rankings():
+    """Trigger a database update for all available seasons.
+
+    Will execute all the required updates as background tasks;
+    see update_ranking() method for further details.
+    """
+    app.logger.debug("Initializing full ranking update")
+    seasons = MainDB.get_seasons()
+    for mod in seasons.keys():
+        for season_id, season in seasons[mod].items():
+            if season_id:
+                update_ranking(mod_id=mod, season_id=season_id)
+    return jsonify("Scheduled database update for all seasons.")
+
+
+@app.route("/api/<mod_id>/parse_replays", methods=["POST"])
+@api_key_authn(keys=[app.config.get("LADDER_API_KEY")])
+def parse_replays(mod_id, skip_inactive: bool = True, max_file_age_days: Optional[int] = None):
+    app.logger.debug(f"Parsing replays for mod {mod_id}")
+    seasons = MainDB.get_seasons()
+    parsed_folders = {}
+    result = {"replays_parsed": 0, "processing_time": datetime.timedelta(0)}
+    for mod in seasons.keys():
+        if mod != mod_id:
+            continue
+        parsed_folders[mod] = []
+        for season_id, season in seasons[mod].items():
+            if skip_inactive and not season.active:
+                continue
+            if season.replay_path not in parsed_folders[season.mod]:
+                app.logger.info(f"Parsing replays from {season.replay_path} for mod {season.mod}")
+                parsing_result, _ = api_system.parse_replays(
+                    database=MainDB,
+                    mod=season.mod,
+                    replay_directory=season.replay_path,
+                    max_file_modified_days=max_file_age_days,
+                    skip_known_files=True,
+                    logger=logger,
+                )
+                parsed_folders[season.mod].append(season.replay_path)
+                result["replays_parsed"] += parsing_result["replays_parsed"]
+                result["processing_time"] += parsing_result["processing_time"]
+
+    app.logger.debug(
+        f"Done parsing replay files, {result['replays_parsed']} new replays parsed " f"in {result['processing_time']}"
     )
+    result["processing_time"] = str(result["processing_time"])
+    return jsonify(result)
 
 
-def _hexc(fc):
-    return "#" + "".join("%02X" % int(fc[i] * 255) for i in range(3))
+@app.route("/api/<mod_id>/<season_id>/update", methods=["POST"])
+@api_key_authn(keys=[app.config.get("LADDER_API_KEY")])
+def update_ranking(mod_id, season_id):
+    """Update database for a specific season.
+
+    Refreshes player rating and ranking; updates highscores table
+    and player_season_history table.
+
+    Task will be executed in sequence as a background thread.
+    """
+    season = MainDB.get_seasons()[mod_id][season_id]
+
+    def _background_task():
+        app.logger.debug(f"Updating ratings for {mod_id}/{season_id}")
+        api_system.update_season_ratings(database=MainDB, season=season)
+        app.logger.debug(f"Updating rankings for {mod_id}/{season_id}")
+        api_system.update_season_ranking(database=MainDB, season=season)
+        app.logger.debug(f"Updating highscore for {mod_id}/{season.group}")
+        api_system.update_highscore(database=MainDB, mod_id=season.mod, season_group=season.group)
+        app.logger.debug(f"Updating history table for {mod_id}/{season_id}")
+        MainDB.update_season_history(mod_id=mod_id, season_id=season_id)
+        app.logger.debug(f"Updating player_season_history table for {mod_id}/{season.id}")
+        MainDB.update_player_season_history(mod_id=mod_id, season_id=season.id, season_group=season.group)
+        app.logger.info(f"Completed update of ratings and subsequent information for {mod_id}/{season_id}.")
+
+    if season:
+        sequential_background_task_executor.submit(_background_task)
+        return jsonify(f"Scheduled database update for {mod_id}/{season_id}")
+    else:
+        return f"No such season: {mod_id}/{season_id}", 400
 
 
-def _get_colors(n):
-    return [_hexc(colorsys.hls_to_rgb(i / n, 0.4, 0.6)) for i in range(n)]
+@app.route("/api/rotate_current_season", methods=["POST"])
+@api_key_authn(keys=[app.config.get("LADDER_API_KEY")])
+def rotate_season(mod_id: Optional[str] = None):
+    api_system.rotate_current_2m_season(db=MainDB, mod=mod_id)
+    MainDB.update_season_history(mod_id=mod_id)
+    # ToDo: useful return
+    return jsonify(True)
 
 
-def _get_global_faction_stats(db):
-    hist = {}
-
-    # XXX: clumsy, patch welcome
-    for i in range(2):
-        cur = db.execute(
-            f"SELECT COUNT(*) AS count, selected_faction_{i} AS faction FROM outcomes GROUP BY selected_faction_{i}"
-        )
-        hist.update({r["faction"]: r["count"] for r in cur})
-        cur.close()
-    hist = hist.items()
-
-    if not hist:
-        return [], [], []
-
-    faction_names, faction_data = zip(*hist)
-    faction_colors = _get_colors(len(hist))
-    return dict(
-        names=list(faction_names),
-        data=list(faction_data),
-        total=sum(faction_data),
-        colors=faction_colors,
-    )
-
-
-def _get_global_map_stats(db):
-    cur = db.execute("SELECT COUNT(*) AS count, map_title FROM outcomes GROUP BY map_title")
-    hist = [(r["map_title"], r["count"]) for r in cur]
-    cur.close()
-
-    if not hist:
-        return [], [], []
-
-    map_names, map_data = zip(*hist)
-    map_colors = _get_colors(len(hist))
-    return dict(
-        names=list(map_names),
-        data=list(map_data),
-        total=sum(map_data),
-        colors=map_colors,
-    )
-
-
-def _get_activity_stats(db, start_date: Optional[date] = None, end_date: Optional[date] = None):
-    cur = db.execute(
-        """
-        SELECT
-            date(end_time) as date,
-            COUNT(*) as count
-        FROM outcomes
-        GROUP BY date
-        ORDER BY date ASC"""
-    )
-    outcomes_per_day = cur.fetchall()
-    if not outcomes_per_day:
-        return dict(dates=None, data=None, games_per_day=0)
-
-    if start_date is None:
-        start_date = date.fromisoformat(outcomes_per_day[0]["date"])
-    if end_date is None:
-        end_date = date.fromisoformat(outcomes_per_day[-1:][0]["date"])
-    nb_days = (end_date - start_date).days
-    all_days = [(start_date + timedelta(n)).strftime("%Y-%m-%d") for n in range(nb_days + 1)]
-    db_records = {o["date"]: o["count"] for o in outcomes_per_day}
-    records = {d: db_records.get(d, 0) for d in all_days}
-
-    return dict(
-        dates=list(records.keys()),
-        data=list(records.values()),
-        games_per_day=sum(records.values()) / len(records),
-    )
-
-
-@app.route("/globalstats")
-def globalstats():
-    db = _db_get()
-
-    cur = db.execute(
-        """
-        SELECT
-            COUNT(*) AS nb_games,
-            strftime('%M:%S', AVG(julianday(end_time) - julianday(start_time))) AS avg_duration
-        FROM outcomes"""
-    )
-    data = cur.fetchone()
-    nb_games = data["nb_games"]
-    avg_duration = data["avg_duration"]
-    cur.close()
-
-    cur = db.execute("SELECT COUNT(*) AS nb_players FROM players WHERE NOT banned")
-    nb_players = cur.fetchone()["nb_players"]
-    cur.close()
-
-    menu = _get_menu()
-    _, cur_mod, cur_period = _get_request_params()
-    return render_template(
-        "globalstats.html",
-        navbar_menu=menu,
-        faction_stats=_get_global_faction_stats(db),
-        map_stats=_get_global_map_stats(db),
-        activity_stats=_get_activity_stats(db),
-        nb_games=nb_games,
-        nb_players=nb_players,
-        avg_duration=avg_duration,
-        period_info=get_season_info(cur_period) if cur_period != "all" else None,
-        mod_id=cur_mod,
-    )
-
-
-@app.route("/about")
-@app.route("/info")
-def info():
-    menu = _get_menu()
-    _, cur_mod, cur_period = _get_request_params()
-    return render_template(
-        "info.html", navbar_menu=menu, period_info=get_season_info("2m"), mod=mods[cur_mod], mod_id=cur_mod
-    )
-
-
-@app.route("/replay/<replay_hash>")
-def replay(replay_hash):
-    db = _db_get()
-    cur = db.execute("SELECT filename FROM outcomes WHERE hash=:hash", dict(hash=replay_hash))
-    fullpath = cur.fetchone()["filename"]
-    cur.close()
-    return send_file(fullpath, as_attachment=True)
+@app.route("/api/system/update_player_profiles", methods=["POST"])
+@api_key_authn(keys=[app.config.get("LADDER_API_KEY")])
+def update_player_profiles():
+    """Query and update internal profile information from OpenRA Forum API for all known user accounts"""
+    return api_system.update_player_profiles(database=MainDB)

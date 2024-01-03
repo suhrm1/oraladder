@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+{% include '_menu_season_select.html' %}
+
+<h3>{% block title %}{{ period_info.title }}{% endblock %}</h3>
+<table id="season-info">
+	<thead>
+	<tr>
+		<th>Start</th>
+		<th>End</th>
+		<th>Algorithm</th>
+		<th>Games played</th>
+		<th>Active players</th>
+		<th>Avg. game duration</th>
+	</tr>
+	</thead>
+	<tbody>
+	<tr>
+		<td>{{ period_info.start }}</td>
+		<td>{{ period_info.end }}</td>
+		<td><span title="{{ period_info.algorithm.description }}">{{ period_info.algorithm.title }}</span></td>
+		<td>{{ season_stats.nb_games }}</td>
+		<td>{{ season_stats.nb_players }}</td>
+		<td>{{ season_stats.avg_game_duration }}</td>
+	</tr>
+	</tbody>
+</table>
+
+{% include 'leaderboard.html' %}
+
+{% if season_stats.nb_games > 0 %}
+    {% include 'latest.html' %}
+{% endif %}
+
+{% if season_stats.nb_games > 7 %}
+{% include 'stats.html' %}
+{% endif %}
+
+{% endblock %}

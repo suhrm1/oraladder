@@ -13,6 +13,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 ### Security
 
+## [2.1.0] - tbd.
+
+### Added
+- `ora-dbtool`: Added CLI arguments to auto-generate YAML metadata files for the databases created (see YAML-based season processing introduced for `ladderweb`)
+- `ora-ladder`: Added new algorithm option `openskill` based on the [OpenSkill module](https://github.com/OpenDebates/openskill.py). OpenRA ladder specific overrides apply that prevent "negative" point assignment on loss and a minimum point increase for every win (even when the algorithm does not alter the player skill rating).
+### Changed
+- `ladderweb`:
+  - handling of multiple seasons derives from a YAML config file. See the [example file](./ladderweb/seasons.yml) for the required syntax.
+  - Player rank for each season is displayed in relation to total active players (on `/player/` pages)
+  - Changes of `+/- 0` skill points are displayed in neutral form in scoreboards (instead of "positive" green coloring)
+### Deprecated
+### Removed
+### Fixed
+### Security
+
 ## [2.0.2] - 2022-11-20
 
 ### Added

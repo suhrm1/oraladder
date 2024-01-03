@@ -1,0 +1,28 @@
+- id: all
+  mod: ra
+  title: All-time
+  description:
+  algorithm: trueskill
+  replay_path: /replays/ra
+  group: other
+- id: 2m
+  mod: ra
+  title: Current season
+  duration: 2 months
+  algorithm: trueskill
+  replay_path: /replays/ra
+  group: seasons
+- id: all
+  mod: td
+  title: All-time
+  description:
+  algorithm: trueskill
+  replay_path: /replays/td
+  group: other
+- id: 2m
+  mod: td
+  title: Current season
+  duration: 2 months
+  algorithm: trueskill
+  replay_path: /replays/td
+  group: seasons
