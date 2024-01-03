@@ -7,6 +7,27 @@ mods = dict(
         # supports_analysis=True,
         mappacks=(
             dict(
+                label="2024.1",
+                filename="ladder-map-pack-2024.1.zip",
+                changelog="""
+                    New ladder map pack for the first seasons of 2024 featuring some revisited classics.
+                """,
+                maps=(
+                    ("A Nuclear Winter Remastered", "Lucian, Happy"),
+                    ("Darker Woods", "J MegaTank, Lad"),
+                    ("Innocence", "Blackened"),
+                    ("Mounds", "Pinkthoth"),
+                    ("Ravenbeak Marshes", "Pinkthoth"),
+                    ("Sidestep Remastered", "SoScared, Happy"),
+                    ("Summer Camp", "Lad"),
+                    ("Trail of Thought", "netnazgul"),
+                    ("Twisted Petrol Station", "Blackened"),
+                    ("Ups and Downs", "Lad"),
+                    ("Warwind Remastered", "SoScared, Happy"),
+                    ("Winding Woods", "Pinkthoth"),
+                ),
+            ),
+            dict(
                 label="2023.2 v2 (rel20231010)",
                 filename="ladder-map-pack-2023.2-release20231010.zip",
                 changelog="""
