@@ -1,0 +1,14 @@
+FROM oraladder/base:latest
+
+RUN python3 -m venv venv/
+
+RUN . venv/bin/activate && pip install gunicorn && pip install -e .
+
+ADD ./ratl ./ratl
+
+RUN mkdir -p /home/openra/replays
+
+ENV replay_folder="/home/openra/replays/"
+ENV config_folder="/home/openra/"
+
+CMD ["venv/bin/gunicorn", "-b", "0.0.0.0:8000", "ratl:app"]

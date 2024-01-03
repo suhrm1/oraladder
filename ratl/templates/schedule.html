@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% set active_page = "schedule" %}
+
+{% block title %}Latest games{% endblock %}
+
+{% block content %}
+<div>
+	<p>RATL is a 2vs2 league played on the Red Alert mod for <a href="https://openra.net" target="_blank">OpenRA</a>
+		that aims to put focus on the competitive aspect of 2vs2.</p>
+	<p><b>Season 3</b> of RATL begins on <b>2023/12/06</b>. Check out the
+		<a href="https://forum.openra.net/viewtopic.php?f=85&t=21812" target="_blank">RATL S03 forum post</a> for
+		current standings, latest information, and announcements regarding tournament process.</p>
+</div>
+
+<h2 id="teams">Registered Teams</h2>
+<ul>
+{% for team in teams %}
+	<li><strong>{{ team.name }}</strong> [{{ team.players[0].name }} & {{ team.players[1].name }}]</li>
+{% endfor %}
+</ul>
+<h2 id="schedule">Schedule</h2>
+<div>
+	<p>RATL matches are scheduled as follows. Playoffs are will determine the League winners until <strong>June 19th, 2023</strong>.
+	</p>
+</div>
+
+{% for caption, games in schedule.items() %}
+<h3>{{caption}}</h3>
+<table>
+	<thead>
+		<tr>
+			<th>Team 1</th>
+			<th>Team 2</th>
+			<th>Due</th>
+			<th>Status</th>
+		</tr>
+	</thead>
+	<tbody>
+		{% for game in games %}
+		<tr>
+			<td>{{ game[1] }}</td>
+			<td>{{ game[2] }}</td>
+			<td>{{ game[0] }}</td>
+			<td>{{ game[3] }}</td>
+		</tr>
+		{% endfor %}
+	</tbody>
+</table>
+{% endfor %}
+{% endblock %}

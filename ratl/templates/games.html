@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% set active_page = "games" %}
+
+{% block title %}Latest games{% endblock %}
+
+{% block content %}
+<h2>Games</h2>
+{% if games %}
+<table>
+	<thead>
+		<tr>
+			<th>Replay</th>
+			<th>Date</th>
+			<th>Game</th>
+			<th>Map</th>
+			<th>Winner</th>
+		</tr>
+	</thead>
+	<tbody>
+		{% for game in games %}
+		<tr>
+			<td><a href="{{ url_for('replay', replay_hash=game.replay_id) }}">📥</a></td>
+			<td>{{ game.end_time }}</td>
+			<td class="player"><strong>{{ game.team1.name }}</strong> [{{ game.team1.players[0].profile_name }} & {{ game.team1.players[1].profile_name }}]
+				vs. <strong>{{ game.team2.name }}</strong> [{{ game.team2.players[0].profile_name }} & {{ game.team2.players[1].profile_name }}]</td>
+			<td class="map">{{ game.map }}</td>
+			<td class="spoiler">{{ game.result }}</td>
+		</tr>
+		{% endfor %}
+	</tbody>
+</table>
+{% else %}
+<div>
+	<p><i>No results have been registered yet.</i></p>
+	<p>Check the <a href="{{ url_for("schedule") }}">tournament schedule</a> or contact tournament administration
+		through the <a href="https://forum.openra.net/viewtopic.php?f=85&t=21732" target="_blank">OpenRA forum</a>.</p></div>
+{% endif %}
+{% endblock %}
