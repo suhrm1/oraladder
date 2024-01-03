@@ -40,5 +40,9 @@ RUN . venv/bin/activate && pip install gunicorn && pip install -r requirements.t
 RUN mkdir instance && mv -v ladderweb/seasons.yml instance/
 
 ENV GUNICORN_WORKER_TIMEOUT=90
+ENV LOG_LEVEL=info
 
-CMD venv/bin/gunicorn -b 0.0.0.0:8000 --timeout $GUNICORN_WORKER_TIMEOUT ladderweb:app
+CMD venv/bin/gunicorn -b 0.0.0.0:8000 \
+    --timeout $GUNICORN_WORKER_TIMEOUT \
+    --log-level=$LOG_LEVEL \
+    ladderweb:app
