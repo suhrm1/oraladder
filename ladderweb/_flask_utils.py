@@ -13,7 +13,7 @@ def create_app():
         app.config["LADDER_API_KEY"] = _api_key
         print(f"Ladder admin API key generated:\n\n{_api_key}\n\n")
         del _api_key
-    app.logger.setLevel(os.environ.get("LOG_LEVEL", "INFO"))
+    app.logger.setLevel(str(os.environ.get("LOG_LEVEL", "INFO")).upper())
     return app
 
 
