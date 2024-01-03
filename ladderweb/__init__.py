@@ -667,21 +667,21 @@ def update_ranking(mod_id, season_id):
     season = MainDB.get_seasons()[mod_id][season_id]
 
     def _background_task():
-        app.logger.debug(f"Updating ratings for {mod_id}/{season_id}")
+        app.logger.info(f"Updating ratings for {mod_id}/{season_id}")
         api_system.update_season_ratings(database=MainDB, season=season)
-        app.logger.debug(f"Updating rankings for {mod_id}/{season_id}")
+        app.logger.info(f"Updating rankings for {mod_id}/{season_id}")
         api_system.update_season_ranking(database=MainDB, season=season)
-        app.logger.debug(f"Updating highscore for {mod_id}/{season.group}")
+        app.logger.info(f"Updating highscore for {mod_id}/{season.group}")
         api_system.update_highscore(database=MainDB, mod_id=season.mod, season_group=season.group)
-        app.logger.debug(f"Updating history table for {mod_id}/{season_id}")
+        app.logger.info(f"Updating history table for {mod_id}/{season_id}")
         MainDB.update_season_history(mod_id=mod_id, season_id=season_id)
-        app.logger.debug(f"Updating player_season_history table for {mod_id}/{season.id}")
+        app.logger.info(f"Updating player_season_history table for {mod_id}/{season.id}")
         MainDB.update_player_season_history(mod_id=mod_id, season_id=season.id, season_group=season.group)
         app.logger.info(f"Completed update of ratings and subsequent information for {mod_id}/{season_id}.")
 
     if season:
         sequential_background_task_executor.submit(_background_task)
-        app.logger.info(f"Stated update of ratings and subsequent information for {mod_id}/{season_id}.")
+        app.logger.info(f"Started update of ratings and subsequent information for {mod_id}/{season_id}.")
         return jsonify(f"Scheduled database update for {mod_id}/{season_id}")
     else:
         msg = f"No such season: {mod_id}/{season_id}"
