@@ -65,7 +65,7 @@ def filter_valid_teamgames(replays: dict, teams: dict, fingerprints: dict = {}) 
                 elif team == 2:
                     t2.append(player_id)
         if not (len(t1) == len(t2) == 2):
-            logging.warning(f"Too many players")
+            logging.warning(f"Too many players: T1 {t1}, T2 {t2}")
             continue
         elif set(t1) in team_tuples and set(t2) in team_tuples:
             valid_replays[replay_id] = replay
