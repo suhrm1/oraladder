@@ -5,8 +5,7 @@ services:
   ladder:
     image: oraladder/ladder:mariadb
     environment:
-      FLASK_DEBUG: True
-      FLASK_LADDER_BANS_FILE: "instance/banned_profiles"
+      FLASK_LADDER_BANS_FILE: "/home/openra/banned_profiles"
       FLASK_LADDER_API_KEY: apitest
       FLASK_LADDER_MAIN_DATABASE: "mariadb+mariadbconnector://ladder:ladderdbsecret@database:3306/ladder"
     ports:

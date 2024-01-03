@@ -265,7 +265,6 @@ class LadderDatabase:
                 FROM players p)
             SELECT * FROM scores WHERE (top_ten_percent>0 OR first_place>0 OR second_place>0 OR third_place>0)
             ORDER BY 4 DESC, 5 DESC, 6 DESC, 7 DESC, 9 DESC, 8 DESC, 10 DESC;"""
-        print(sql)
         with self.engine.connect() as conn:
             res = conn.execute(text(sql))
             return self._result_to_list(res)
