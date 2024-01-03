@@ -295,10 +295,8 @@ def update_season_ranking(database: LadderDatabase, season: Season):
     if season.end is not None:
         if (season.end - date.today()).days < 0 and season.active:
             # update status
-            season.active = False
-            database.exec(
-                f"UPDATE season SET active='{season.active}' WHERE `mod`='{season.mod}' AND id='{season.id}';"
-            )
+            season.active = 0
+            database.exec(f"UPDATE season SET active={season.active} WHERE `mod`='{season.mod}' AND id='{season.id}';")
             logging.debug(
                 f"Updated seasons {season.mod}/{season.id} status, set inactive based on end date {season.end}"
             )

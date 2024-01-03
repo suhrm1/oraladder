@@ -1,5 +1,21 @@
-FROM oraladder/base:latest
+FROM python:3.10
 
+RUN useradd -m -s /bin/bash openra
+
+RUN apt-get update && apt-get install -y make curl nano sqlite3 libmariadb-dev  \
+    && apt-get clean
+
+RUN mkdir /home/openra/oraladder
+
+WORKDIR /home/openra/oraladder
+
+ADD ./laddertools ./laddertools
+ADD ./ladderweb ./ladderweb
+ADD ./LICENSE ./
+
+RUN chown openra: -R /home/openra
+
+USER openra
 # https://github.com/chartjs/Chart.js/releases/latest
 ENV CHART_JS_VERSION="2.9.3"
 
@@ -19,7 +35,7 @@ COPY requirements.txt .
 
 RUN python3 -m venv venv/
 
-RUN . venv/bin/activate && pip install gunicorn && pip install -e . && pip install -r requirements.txt
+RUN . venv/bin/activate && pip install gunicorn && pip install -r requirements.txt
 
 RUN mkdir instance && mv -v ladderweb/seasons.yml instance/
 
