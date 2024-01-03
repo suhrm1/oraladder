@@ -88,12 +88,13 @@ def parse_replays(
     replays: {str} = {replay_directory + f for f in os.listdir(replay_directory) if f.endswith(".orarep")}
     replays = list(replays - set(known_files))
 
+    today = date.today()
+
     if max_file_modified_days is not None:
         if max_file_modified_days >= 0:
             logger.debug(
                 f"Excluding replay files older than {max_file_modified_days} days (based on OS file modified time)"
             )
-            today = date.today()
             for path in replays:
                 mdate = date.fromtimestamp(os.path.getmtime(path))
                 if (today - mdate).days >= max_file_modified_days:
