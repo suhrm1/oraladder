@@ -628,7 +628,7 @@ class LadderDatabase:
         else:
             condition_str = ""
         with self.engine.connect() as conn:
-            query = f"SELECT * FROM history {condition_str} ORDER BY end DESC;"
+            query = f"SELECT * FROM history {condition_str} ORDER BY `end` DESC;"
             self.logger.debug(f"Querying season history: {query}")
             cursor = conn.execute(text(query))
             result = self._result_to_list(cursor)
@@ -709,9 +709,9 @@ class LadderDatabase:
 
     def get_games_by_date_range(self, mod: str, start: str, end: str) -> {}:
         select = (
-            f"SELECT date(end_time) as date, COUNT(*) as count FROM game "
+            f"SELECT date(end_time) as `date`, COUNT(*) as `count` FROM game "
             f"WHERE `mod`='{mod}' AND start_time>='{start}' AND end_time<='{end}' "
-            f"GROUP BY date ORDER BY date ASC"
+            f"GROUP BY `date` ORDER BY `date` ASC"
         )
         res = self.exec(select, fetch=True)
         return {date: count for date, count in res}

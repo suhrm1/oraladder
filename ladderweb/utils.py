@@ -1,7 +1,7 @@
 import colorsys
 import json
 import re
-from datetime import timedelta
+from datetime import timedelta, date
 from typing import Any, Optional
 
 import numpy as np
@@ -63,11 +63,18 @@ def _get_global_map_stats(db: LadderDatabase, season: Season):
 def _get_activity_stats(db: LadderDatabase, season: Season):
     start = season.start.isoformat()
     end = (season.end + timedelta(days=1)).isoformat()
+    today = date.today()
     data = db.get_games_by_date_range(mod=season.mod, start=start, end=end)
-    nb_days = (season.end - season.start).days
-    all_days = [(season.start + timedelta(days=n)).strftime("%Y-%m-%d") for n in range(nb_days + 1)]
-    db_records = data
-    records = {d: db_records.get(d, 0) for d in all_days}
+    date_cursor = season.start
+    records_base = {}
+    while date_cursor <= season.end and date_cursor <= today:
+        # Create a continous range of dates for the season duration
+        records_base[date_cursor] = 0
+        date_cursor += timedelta(days=1)
+    # Merge actually played games into the continous date range
+    records_base.update(data)
+    # Transform dictionary keys to string format
+    records = {key_date.isoformat(): value for key_date, value in records_base.items()}
 
     return dict(
         dates=list(records.keys()),

@@ -69,7 +69,6 @@ def _get_request_params() -> Tuple[str, str, str]:
 
 # Initialize the Flask application
 app = create_app()
-logger: Logger = app.logger
 
 db_settings = {
     "bans_file": app.config.get("LADDER_BANS_FILE", "instance/banned_profiles"),
@@ -82,7 +81,7 @@ MainDB = LadderDatabase(
     connection_string=app.config.get("LADDER_MAIN_DATABASE", f"sqlite:///{app.instance_path}/ladder.db"),
     settings=db_settings,
     season_config_dir=app.instance_path,
-    logger=logger,
+    logger=app.logger,
 )
 
 # Initialize a background task pool
@@ -641,7 +640,7 @@ def parse_replays(mod_id, skip_inactive: bool = True, max_file_age_days: Optiona
                     replay_directory=season.replay_path,
                     max_file_modified_days=max_file_age_days,
                     skip_known_files=True,
-                    logger=logger,
+                    logger=app.logger,
                 )
                 parsed_folders[season.mod].append(season.replay_path)
                 result["replays_parsed"] += parsing_result["replays_parsed"]
