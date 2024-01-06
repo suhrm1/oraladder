@@ -360,7 +360,7 @@ class LadderDatabase:
         check = (
             f"SELECT COUNT(*) FROM SeasonGames sg "
             f"WHERE `mod`='{mod}' AND season_id='{season_id}' "
-            f"AND (profile_id0='{profile_id}' OR profile_id1='{profile_id}');"
+            f"AND (profile_id0={profile_id} OR profile_id1={profile_id});"
         )
         decision = bool(self.exec(check, fetch=True)[0][0])
         return decision
@@ -369,7 +369,7 @@ class LadderDatabase:
         check = (
             f"SELECT COUNT(*) FROM SeasonGames sg "
             f"WHERE `mod`='{mod}' "
-            f"AND (profile_id0='{profile_id}' OR profile_id1='{profile_id}');"
+            f"AND (profile_id0={profile_id} OR profile_id1={profile_id});"
         )
         decision = bool(self.exec(check, fetch=True)[0][0])
         return decision
@@ -401,12 +401,12 @@ class LadderDatabase:
         return {faction: win_loss.get("wins", 0) + win_loss.get("losses", 0) for faction, win_loss in stats.items()}
 
     def get_player_faction_stats(self, mod: str, profile_id: str, season_id: Optional[str] = None) -> {}:
-        condition = f"p.profile_id='{profile_id}' AND g.`mod`='{mod}'"
+        condition = f"p.profile_id={profile_id} AND g.`mod`='{mod}'"
         if season_id is not None:
             condition += f" AND g.season_id='{season_id}'"
         select = f"""SELECT DISTINCT (CASE
-                WHEN g.profile_id0='{profile_id}' THEN selected_faction_0
-                WHEN g.profile_id1='{profile_id}' THEN selected_faction_1
+                WHEN g.profile_id0=p.profile_id THEN selected_faction_0
+                WHEN g.profile_id1=p.profile_id THEN selected_faction_1
             END) AS faction, COUNT(DISTINCT hash) AS count
             FROM SeasonGames g LEFT JOIN accounts p ON p.profile_id IN (g.profile_id0, g.profile_id1)
             WHERE {condition}
@@ -415,7 +415,7 @@ class LadderDatabase:
         return {row[0]: row[1] for row in res}
 
     def get_player_map_stats(self, mod: str, profile_id: str, season_id: Optional[str] = None) -> {}:
-        condition = f"(g.profile_id0='{profile_id}' OR g.profile_id1='{profile_id}') AND g.`mod`='{mod}'"
+        condition = f"(g.profile_id0={profile_id} OR g.profile_id1={profile_id}) AND g.`mod`='{mod}'"
         if season_id is None:
             # In this case we need to join the season table to add the season group as a condition
             condition += f" AND s.`group`='seasons'"
@@ -425,8 +425,8 @@ class LadderDatabase:
             condition += f" AND g.season_id='{season_id}'"
             join = ""
         select = f"""SELECT map_title,
-                SUM((CASE WHEN g.profile_id0='{profile_id}' THEN 1 ELSE 0 END)) as wins,
-                SUM((CASE WHEN g.profile_id1='{profile_id}' THEN 1 ELSE 0 END)) as losses
+                SUM((CASE WHEN g.profile_id0={profile_id} THEN 1 ELSE 0 END)) as wins,
+                SUM((CASE WHEN g.profile_id1={profile_id} THEN 1 ELSE 0 END)) as losses
             FROM SeasonGames g
             {join}
             WHERE {condition}
@@ -448,7 +448,7 @@ class LadderDatabase:
             seasons = list(self.get_seasons()[mod].values())
         player_season_history = {}
 
-        select_condition = f"mod_id='{mod}' AND profile_id='{profile_id}'"
+        select_condition = f"mod_id='{mod}' AND profile_id={profile_id}"
         _history = {
             row["season_id"]: row for row in self.fetch_table("player_season_history", condition=select_condition)
         }
@@ -475,7 +475,7 @@ class LadderDatabase:
                             WHERE r2.`mod`=r.`mod` AND r2.season_id=r.season_id
                         ) AS players
                         FROM ranking r
-                        WHERE r.profile_id='{profile_id}' AND r.`mod`='{mod}' AND r.season_id='{season.id}';"""
+                        WHERE r.profile_id={profile_id} AND r.`mod`='{mod}' AND r.season_id='{season.id}';"""
                     row: sqlalchemy.engine.row.Row = self.exec(select, fetch=True)[0]
                     stats = dict(row._mapping)
                     stats["ratio"] = "{:.2f}%".format(stats["wins"] / stats["games"] * 100)
@@ -487,7 +487,7 @@ class LadderDatabase:
                         # Remove prior entries from the table
                         delete_sql = (
                             f"DELETE FROM player_season_history "
-                            f"WHERE profile_id='{profile_id}' "
+                            f"WHERE profile_id={profile_id} "
                             f"AND mod_id='{mod}' "
                             f"AND season_id='{season.id}'"
                         )
