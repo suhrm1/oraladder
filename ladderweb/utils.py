@@ -139,10 +139,13 @@ def _get_player_map_stats(db: LadderDatabase, mod: str, profile_id: str, season_
     for map_title, stats in _data.items():
         clean_map_title = _stripped_map_name(map_title)
         if clean_map_title in hist.keys():
-            hist[clean_map_title]["wins"] += stats["wins"]
-            hist[clean_map_title]["losses"] += stats["losses"]
+            hist[clean_map_title]["wins"] += int(stats["wins"])
+            hist[clean_map_title]["losses"] += int(stats["losses"])
         else:
-            hist[clean_map_title] = stats
+            hist[clean_map_title] = {
+                "wins": int(stats["wins"]),
+                "losses": int(stats["losses"]),
+            }
 
     map_names = list(hist.keys())
     map_win_data = [m["wins"] for m in hist.values()]
