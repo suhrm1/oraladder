@@ -425,8 +425,8 @@ def delete_replay(database: LadderDatabase, hash: str):
         game = res[0]._asdict()
         deleted_replay_folder = database.get_config_value("deleted_replay_folder")
         os.makedirs(deleted_replay_folder, exist_ok=True)
-        moved_file = shutil.copy(src=game["filename"], dst=deleted_replay_folder)
         try:
+            moved_file = shutil.copy(src=game["filename"], dst=deleted_replay_folder)
             os.remove(game["filename"])
             database.logger.debug(f"Moved deleted replay file to {moved_file}")
         except FileNotFoundError as e:
