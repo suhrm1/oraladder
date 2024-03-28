@@ -28,6 +28,7 @@ ladderdev: initladderdev
 	FLASK_APP=ladderweb FLASK_DEBUG=True FLASK_RUN_PORT=5000 \
 	FLASK_LADDER_BANS_FILE="instance/banned_profiles" \
 	FLASK_LADDER_API_KEY=apitest \
+	FLASK_LADDER_MAIN_DATABASE="mariadb+mariadbconnector://ladder:ladderdbsecret@127.0.0.1:3306/ladder" \
 	$(VENV)/bin/flask run
 
 initladderdev: $(VENV) $(LADDER_STATIC)

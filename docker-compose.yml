@@ -1,0 +1,39 @@
+version: "3"
+
+services:
+
+  ladder:
+    image: oraladder/ladder:dev
+    build:
+      context: .
+    restart: always
+    environment:
+      FLASK_LADDER_API_KEY: apitest
+      FLASK_LADDER_MAIN_DATABASE: "mariadb+mariadbconnector://ladder:ladderdbsecret@database:3306/ladder"
+      FLASK_LADDER_RA_DEFAULT_REPLAY_FOLDER: "/home/openra/replays/ra"
+      FLASK_LADDER_TD_DEFAULT_REPLAY_FOLDER: "/home/openra/replays/td"
+      FLASK_LADDER_DELETED_REPLAY_FOLDER: "/home/openra/replays/deleted"
+      FLASK_LADDER_BANS_FILE: "/home/openra/banned_profiles"
+    ports:
+      - "8000:8000"
+    depends_on:
+      database:
+        condition: service_healthy
+
+  database:
+    image: mariadb:11
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    environment:
+      MARIADB_ROOT_PASSWORD: ladderdevdbroot
+      MARIADB_DATABASE: ladder
+      MARIADB_USER: ladder
+      MARIADB_PASSWORD: ladderdbsecret
+    healthcheck:
+      test: ["CMD", "mariadb-check", "ladder", "-uladder", "-pladderdbsecret"]
+      start_period: 5s
+      interval: 3s
+      timeout: 60s
+
+volumes:
+  mariadb_data:
