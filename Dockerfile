@@ -9,10 +9,6 @@ RUN mkdir /home/openra/oraladder
 
 WORKDIR /home/openra/oraladder
 
-ADD ./laddertools ./laddertools
-ADD ./ladderweb ./ladderweb
-ADD ./LICENSE ./
-
 RUN chown openra: -R /home/openra
 
 USER openra
@@ -25,7 +21,7 @@ ENV JQUERY_VERSION="3.6.0"
 # https://github.com/DataTables/DataTables/releases/latest
 ENV DATATABLES_VERSION="1.10.24"
 
-RUN cd ladderweb/static/ \
+RUN mkdir -p ladderweb/static/ && cd ladderweb/static/ \
     && curl -L https://cdnjs.cloudflare.com/ajax/libs/Chart.js/${CHART_JS_VERSION}/Chart.min.css -o Chart.min.css \
     && curl -L https://cdnjs.cloudflare.com/ajax/libs/Chart.js/${CHART_JS_VERSION}/Chart.bundle.min.js -o Chart.bundle.min.js \
     && curl -L https://cdn.datatables.net/v/dt/dt-${DATATABLES_VERSION}/datatables.min.js -o datatables.min.js \
@@ -36,6 +32,10 @@ COPY requirements.txt .
 RUN python3 -m venv venv/
 
 RUN . venv/bin/activate && pip install gunicorn && pip install -r requirements.txt
+
+ADD ./laddertools ./laddertools
+ADD ./ladderweb ./ladderweb
+ADD ./LICENSE ./
 
 RUN mkdir instance && mv -v ladderweb/seasons.yml instance/
 
