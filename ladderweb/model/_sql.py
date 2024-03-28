@@ -73,7 +73,7 @@ CREATE_STATEMENTS = {
         season_id           VARCHAR(63) NOT NULL,
         title               VARCHAR(255) NOT NULL,
         season_group        VARCHAR(63) NOT NULL,
-        start               DATE NOT NULL,
+        start               DATE NULL,
         end                 DATE NULL,
         nb_games            INTEGER NOT NULL,
         avg_game_duration   VARCHAR(8),
