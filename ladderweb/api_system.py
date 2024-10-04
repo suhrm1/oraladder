@@ -8,6 +8,7 @@ from datetime import date
 from hashlib import sha256
 from operator import itemgetter
 from typing import Dict, Tuple, Optional
+from logging import Logger, getLogger
 
 from laddertools.model import PlayerLookup
 from laddertools.rankings import ranking_systems
@@ -31,8 +32,10 @@ def update_highscore(database: LadderDatabase, mod_id: str, season_group: str = 
     highscore = database.get_highscore(mod_id=mod_id, group_id=season_group)
     for row in highscore:
         row.update({"mod_id": mod_id, "season_group": season_group})
-    database.exec(sql=f"DELETE FROM highscore WHERE mod_id='{mod_id}' AND season_group='{season_group}';")
-    database.batch_insert(table="highscore", batch=highscore)
+    with database.engine.begin() as txn:
+        delete_sql = f"DELETE FROM highscore WHERE mod_id='{mod_id}' AND season_group='{season_group}';"
+        database.exec(delete_sql, transaction=txn)
+        database.batch_insert(table="highscore", batch=highscore, transaction=txn)
 
 
 def parse_replays(
@@ -42,8 +45,9 @@ def parse_replays(
     skip_known_files: bool = True,
     max_file_modified_days: Optional[int] = None,
     known_accounts: Dict = {},
+    logger: Logger = getLogger(),
 ):
-    logging.debug(f"Parsing replay files for mod {mod} from folder {replay_directory}")
+    logger.debug(f"Parsing replay files for mod {mod} from folder {replay_directory}")
     # prepare a timer
     _now = datetime.datetime.now
     _start_time = _now()
@@ -53,10 +57,17 @@ def parse_replays(
     if known_accounts is None:
         known_accounts = _accounts_db(database)
 
+    if not os.path.exists(replay_directory):
+        logger.warning(f"Designated replay path {replay_directory} does not exist.")
+        return {
+            "replays_parsed": 0,
+            "processing_time": datetime.timedelta(0),
+        }, known_accounts
+
     for f in os.listdir(replay_directory):
         if os.path.isdir(replay_directory + f):
             subfolder = replay_directory + f + "/"
-            logging.debug(f"Subfolder {f}, entering recursion")
+            logger.debug(f"Subfolder {f}, entering recursion")
             recursion_result, known_accounts = parse_replays(
                 database=database,
                 mod=mod,
@@ -77,17 +88,18 @@ def parse_replays(
     replays: {str} = {replay_directory + f for f in os.listdir(replay_directory) if f.endswith(".orarep")}
     replays = list(replays - set(known_files))
 
+    today = date.today()
+
     if max_file_modified_days is not None:
         if max_file_modified_days >= 0:
-            logging.debug(
+            logger.debug(
                 f"Excluding replay files older than {max_file_modified_days} days (based on OS file modified time)"
             )
-            today = date.today()
             for path in replays:
                 mdate = date.fromtimestamp(os.path.getmtime(path))
                 if (today - mdate).days >= max_file_modified_days:
                     replays.remove(path)
-                    logging.debug(f"Skipping {path} (modified date: {mdate})")
+                    logger.debug(f"Skipping {path} (modified date: {mdate})")
 
     if len(replays) < 1:
         # nothing to do
@@ -105,7 +117,7 @@ def parse_replays(
             ):
                 results.append(result)
         except Exception as e:
-            logging.error(f"Error parsing replay file {replay}")
+            logger.error(f"Error parsing replay file {replay}")
             yesterday = today - datetime.timedelta(days=1)
             if today.isoformat() not in replay and yesterday.isoformat() not in replay:
                 # replay may still be in progress, only block it from-reparsing if it does not contain recent date
@@ -127,7 +139,7 @@ def parse_replays(
             "profile_id": account[0],
             "profile_name": account[1].replace("'", "").strip(),
             "avatar_url": account[2],
-            "banned": account[0] in banned_profiles,
+            "banned": int(account[0] in banned_profiles),
         }
         for fingerprint, account in known_accounts.items()
         if account is not None
@@ -179,7 +191,7 @@ def update_season_ratings(database: LadderDatabase, season: Season):
     for result in results:
         player_0_id = result["profile_id0"]
         player_1_id = result["profile_id1"]
-        if not (player_0_id in banned_profiles or player_1_id in banned_profiles):
+        if not ((player_0_id in banned_profiles) or (player_1_id in banned_profiles)):
             result.update(
                 {
                     "player0": GamePlayerInfo(
@@ -222,14 +234,14 @@ def update_season_ratings(database: LadderDatabase, season: Season):
         )
         ratings.append(rating1)
 
-    database.exec(f"DELETE FROM rating WHERE mod='{season.mod}' and season_id='{season.id}';")
+    database.exec(f"DELETE FROM rating WHERE `mod`='{season.mod}' and season_id='{season.id}';")
     database.batch_insert(table="rating", batch=ratings)
 
     return True
 
 
 def update_season_ranking(database: LadderDatabase, season: Season):
-    query = f"SELECT DISTINCT r.profile_id FROM rating r WHERE r.season_id='{season.id}' AND r.mod='{season.mod}';"
+    query = f"SELECT DISTINCT r.profile_id FROM rating r WHERE r.season_id='{season.id}' AND r.`mod`='{season.mod}';"
     players = [r[0] for r in database.exec(query, fetch=True)]
     banned_profiles = database.get_banned_profile_ids()
     end_time = season.end + datetime.timedelta(days=1)
@@ -253,7 +265,7 @@ def update_season_ranking(database: LadderDatabase, season: Season):
         last_game_hash = player_last_game[profile_id]
         rating, diff = database.exec(
             f"SELECT value, difference FROM rating WHERE replay_hash='{last_game_hash}' "
-            f"AND profile_id='{profile_id}' AND season_id='{season.id}' AND mod='{season.mod}'",
+            f"AND profile_id='{profile_id}' AND season_id='{season.id}' AND `mod`='{season.mod}'",
             fetch=True,
         )[0]
 
@@ -267,7 +279,7 @@ def update_season_ranking(database: LadderDatabase, season: Season):
                 "profile_id": profile_id,
                 "season_id": season.id,
                 "mod": season.mod,
-                "eligible": eligible,
+                "eligible": 1 if eligible else 0,
                 "comment": explanation,
                 "wins": player_wins[profile_id],
                 "losses": player_losses[profile_id],
@@ -284,10 +296,10 @@ def update_season_ranking(database: LadderDatabase, season: Season):
     if season.end is not None:
         if (season.end - date.today()).days < 0 and season.active:
             # update status
-            season.active = False
-            database.exec(f"UPDATE season SET active='{season.active}' WHERE mod='{season.mod}' AND id='{season.id}';")
+            season.active = 0
+            database.exec(f"UPDATE season SET active={season.active} WHERE `mod`='{season.mod}' AND id='{season.id}';")
             logging.debug(
-                f"Updated seasons {season.mod}/{season.id} status, " f"set inactive based on end date {season.end}"
+                f"Updated seasons {season.mod}/{season.id} status, set inactive based on end date {season.end}"
             )
 
     # Calculate official ranking (i.e. skipping players considered not eligible for official ranking)
@@ -303,8 +315,9 @@ def update_season_ranking(database: LadderDatabase, season: Season):
             else:
                 unranked += 1
 
-    database.exec(f"DELETE FROM ranking WHERE season_id='{season.id}' AND mod='{season.mod}'")
-    database.batch_insert(table="ranking", batch=batch)
+    with database.engine.begin() as txn:
+        database.exec(f"DELETE FROM ranking WHERE season_id='{season.id}' AND `mod`='{season.mod}'", transaction=txn)
+        database.batch_insert(table="ranking", batch=batch, transaction=txn)
 
 
 def rotate_current_2m_season(db: LadderDatabase, mod: Optional[str] = None):
@@ -348,7 +361,7 @@ def rotate_current_2m_season(db: LadderDatabase, mod: Optional[str] = None):
                 table="season",
                 values=list(old_season_dict.values()),
                 columns=list(old_season_dict.keys()),
-                condition=f"mod='{mod_id}' AND id='2m'",
+                condition=f"`mod`='{mod_id}' AND id='2m'",
             )
 
             db.batch_insert(table="season", batch=[new_current_season.dict()])
@@ -412,11 +425,14 @@ def delete_replay(database: LadderDatabase, hash: str):
         game = res[0]._asdict()
         deleted_replay_folder = database.get_config_value("deleted_replay_folder")
         os.makedirs(deleted_replay_folder, exist_ok=True)
-        moved_file = shutil.copy(src=game["filename"], dst=deleted_replay_folder)
-        os.remove(game["filename"])
-        logging.debug(f"Moved deleted replay file to {moved_file}")
+        try:
+            moved_file = shutil.copy(src=game["filename"], dst=deleted_replay_folder)
+            os.remove(game["filename"])
+            database.logger.debug(f"Moved deleted replay file to {moved_file}")
+        except FileNotFoundError as e:
+            database.logger.warning(("Replay file not found: " + game["filename"]))
         sql = f"DELETE FROM game WHERE hash='{hash}';"
         database.exec(sql)
-        logging.debug(f"Deleted replay from database: {game}")
+        database.logger.debug(f"Deleted replay from database: {game}")
         return game
     return False

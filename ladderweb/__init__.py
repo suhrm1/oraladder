@@ -18,7 +18,9 @@ import datetime
 import json
 import os
 import os.path as op
+from logging import Logger
 from typing import Tuple, Union, Optional
+from concurrent.futures import ThreadPoolExecutor
 
 from flask import (
     escape,
@@ -65,8 +67,8 @@ def _get_request_params() -> Tuple[str, str, str]:
     return endpoint, mod, period
 
 
+# Initialize the Flask application
 app = create_app()
-logger = app.logger
 
 db_settings = {
     "bans_file": app.config.get("LADDER_BANS_FILE", "instance/banned_profiles"),
@@ -79,7 +81,11 @@ MainDB = LadderDatabase(
     connection_string=app.config.get("LADDER_MAIN_DATABASE", f"sqlite:///{app.instance_path}/ladder.db"),
     settings=db_settings,
     season_config_dir=app.instance_path,
+    logger=app.logger,
 )
+
+# Initialize a background task pool
+sequential_background_task_executor = ThreadPoolExecutor(1)
 
 
 @app.context_processor
@@ -409,7 +415,7 @@ def latest_games_js():
                 end_date = datetime.date.today() + datetime.timedelta(days=1)
             app.logger.debug(f"Collecting games played between {start_date} and {end_date}.")
             condition = (
-                f"mod='{cur_mod}' AND end_time>='{start_date.isoformat()}' "
+                f"`mod`='{cur_mod}' AND end_time>='{start_date.isoformat()}' "
                 f"AND end_time<='{end_date.isoformat()}' ORDER BY end_time DESC"
             )
         else:
@@ -417,9 +423,9 @@ def latest_games_js():
             # we imply that all games from past 14 days shall be returned
             end_date = datetime.date.today() - datetime.timedelta(days=14)
             app.logger.debug(f"Collecting last 14 days' games.")
-            condition = f"mod='{cur_mod}' AND end_time>='{end_date.isoformat()}' ORDER BY end_time DESC"
+            condition = f"`mod`='{cur_mod}' AND end_time>='{end_date.isoformat()}' ORDER BY end_time DESC"
     else:
-        condition = f"mod='{cur_mod}' AND season_id='{_season_id}' ORDER BY end_time DESC"
+        condition = f"`mod`='{cur_mod}' AND season_id='{_season_id}' ORDER BY end_time DESC"
 
     matches = MainDB.fetch_table("SeasonGames", condition=condition)
 
@@ -493,7 +499,7 @@ def player_games_js(profile_id):
         table = "SeasonGames"
 
     condition = (
-        f"mod='{cur_mod}' {season_condition}"
+        f"`mod`='{cur_mod}' {season_condition}"
         f"AND (profile_id0='{profile_id}' OR profile_id1='{profile_id}') "
         f"ORDER BY end_time DESC"
     )
@@ -548,7 +554,7 @@ def player_games_js(profile_id):
 @app.route("/api/system/refresh", methods=["POST"])
 @api_key_authn(keys=[app.config.get("LADDER_API_KEY")])
 def system_refresh():
-    app.logger.debug("Initializing system refresh")
+    app.logger.info("Initializing system refresh")
 
     request_payload: Union[dict, None] = request.get_json() if request.is_json else None
     app.logger.debug(f"JSON payload: {request_payload}")
@@ -595,10 +601,27 @@ def system_refresh():
     return jsonify(True)
 
 
+@app.route("/api/system/update_rankings", methods=["POST"])
+@api_key_authn(keys=[app.config.get("LADDER_API_KEY")])
+def update_rankings():
+    """Trigger a database update for all available seasons.
+
+    Will execute all the required updates as background tasks;
+    see update_ranking() method for further details.
+    """
+    app.logger.info("Initializing full ranking update")
+    seasons = MainDB.get_seasons()
+    for mod in seasons.keys():
+        for season_id, season in seasons[mod].items():
+            if season_id:
+                update_ranking(mod_id=mod, season_id=season_id)
+    return jsonify("Scheduled database update for all seasons.")
+
+
 @app.route("/api/<mod_id>/parse_replays", methods=["POST"])
 @api_key_authn(keys=[app.config.get("LADDER_API_KEY")])
 def parse_replays(mod_id, skip_inactive: bool = True, max_file_age_days: Optional[int] = None):
-    app.logger.debug(f"Parsing replays for mod {mod_id}")
+    app.logger.info(f"Parsing replays for mod {mod_id}")
     seasons = MainDB.get_seasons()
     parsed_folders = {}
     result = {"replays_parsed": 0, "processing_time": datetime.timedelta(0)}
@@ -617,12 +640,13 @@ def parse_replays(mod_id, skip_inactive: bool = True, max_file_age_days: Optiona
                     replay_directory=season.replay_path,
                     max_file_modified_days=max_file_age_days,
                     skip_known_files=True,
+                    logger=app.logger,
                 )
                 parsed_folders[season.mod].append(season.replay_path)
                 result["replays_parsed"] += parsing_result["replays_parsed"]
                 result["processing_time"] += parsing_result["processing_time"]
 
-    app.logger.debug(
+    app.logger.info(
         f"Done parsing replay files, {result['replays_parsed']} new replays parsed " f"in {result['processing_time']}"
     )
     result["processing_time"] = str(result["processing_time"])
@@ -632,9 +656,16 @@ def parse_replays(mod_id, skip_inactive: bool = True, max_file_age_days: Optiona
 @app.route("/api/<mod_id>/<season_id>/update", methods=["POST"])
 @api_key_authn(keys=[app.config.get("LADDER_API_KEY")])
 def update_ranking(mod_id, season_id):
+    """Update database for a specific season.
+
+    Refreshes player rating and ranking; updates highscores table
+    and player_season_history table.
+
+    Task will be executed in sequence as a background thread.
+    """
     season = MainDB.get_seasons()[mod_id][season_id]
-    if season:
-        print(season.dict())
+
+    def _background_task():
         app.logger.info(f"Updating ratings for {mod_id}/{season_id}")
         api_system.update_season_ratings(database=MainDB, season=season)
         app.logger.info(f"Updating rankings for {mod_id}/{season_id}")
@@ -645,13 +676,22 @@ def update_ranking(mod_id, season_id):
         MainDB.update_season_history(mod_id=mod_id, season_id=season_id)
         app.logger.info(f"Updating player_season_history table for {mod_id}/{season.id}")
         MainDB.update_player_season_history(mod_id=mod_id, season_id=season.id, season_group=season.group)
-    # ToDo: useful return
-    return jsonify(True)
+        app.logger.info(f"Completed update of ratings and subsequent information for {mod_id}/{season_id}.")
+
+    if season:
+        sequential_background_task_executor.submit(_background_task)
+        app.logger.info(f"Started update of ratings and subsequent information for {mod_id}/{season_id}.")
+        return jsonify(f"Scheduled database update for {mod_id}/{season_id}")
+    else:
+        msg = f"No such season: {mod_id}/{season_id}"
+        app.logger.warning(msg)
+        return msg, 400
 
 
 @app.route("/api/rotate_current_season", methods=["POST"])
 @api_key_authn(keys=[app.config.get("LADDER_API_KEY")])
 def rotate_season(mod_id: Optional[str] = None):
+    app.logger.info(f"Initializing season rotation.")
     api_system.rotate_current_2m_season(db=MainDB, mod=mod_id)
     MainDB.update_season_history(mod_id=mod_id)
     # ToDo: useful return

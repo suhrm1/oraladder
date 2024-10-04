@@ -18,13 +18,8 @@
 import calendar
 import datetime
 import logging
-import os.path
-from math import ceil
-from os import path as op
 from typing import Optional
-
-import yaml
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 
 
 class Season(BaseModel):
@@ -33,12 +28,23 @@ class Season(BaseModel):
     title: str
     replay_path: str
     algorithm: str
-    description: Optional[str]
-    start: Optional[datetime.date]
-    end: Optional[datetime.date]
+    description: Optional[str] = None
+    start: Optional[datetime.date] = None
+    end: Optional[datetime.date] = None
     active: Optional[bool] = True
-    duration: Optional[str]
+    duration: Optional[str] = None
     group: Optional[str] = "seasons"
+
+    def __init__(self, *args, **kwargs):
+        # Make sure data params get initialized correctly, e.g. not as empty strings
+        for date_param in ["start", "end"]:
+            if date_param in kwargs:
+                if type(kwargs[date_param]) != datetime.date:
+                    try:
+                        kwargs[date_param] = datetime.date.fromisoformat(kwargs[date_param])
+                    except:
+                        kwargs[date_param] = None
+        super().__init__(*args, **kwargs)
 
     def get_info(self) -> dict:
         if self.id == "2m" and self.start is None:
@@ -59,3 +65,8 @@ class Season(BaseModel):
             end=self.end,
             duration=self.duration,
         )
+
+    def dict(self, *args, **kwargs):
+        dictionary = super().dict()
+        dictionary["active"] = 1 if self.active else 0
+        return dictionary

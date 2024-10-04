@@ -1,7 +1,7 @@
 import colorsys
 import json
 import re
-from datetime import timedelta
+from datetime import timedelta, date
 from typing import Any, Optional
 
 import numpy as np
@@ -63,11 +63,18 @@ def _get_global_map_stats(db: LadderDatabase, season: Season):
 def _get_activity_stats(db: LadderDatabase, season: Season):
     start = season.start.isoformat()
     end = (season.end + timedelta(days=1)).isoformat()
+    today = date.today()
     data = db.get_games_by_date_range(mod=season.mod, start=start, end=end)
-    nb_days = (season.end - season.start).days
-    all_days = [(season.start + timedelta(days=n)).strftime("%Y-%m-%d") for n in range(nb_days + 1)]
-    db_records = data
-    records = {d: db_records.get(d, 0) for d in all_days}
+    date_cursor = season.start
+    records_base = {}
+    while date_cursor <= season.end and date_cursor <= today:
+        # Create a continous range of dates for the season duration
+        records_base[date_cursor] = 0
+        date_cursor += timedelta(days=1)
+    # Merge actually played games into the continous date range
+    records_base.update(data)
+    # Transform dictionary keys to string format
+    records = {key_date.isoformat(): value for key_date, value in records_base.items()}
 
     return dict(
         dates=list(records.keys()),
@@ -77,7 +84,7 @@ def _get_activity_stats(db: LadderDatabase, season: Season):
 
 
 def _get_player_ratings(db: LadderDatabase, mod: str, season_id: str, profile_id: str):
-    condition = f"profile_id='{profile_id}' AND mod='{mod}' AND season_id='{season_id}'"
+    condition = f"profile_id='{profile_id}' AND `mod`='{mod}' AND season_id='{season_id}'"
     res = db.fetch_table("rating", condition=condition)
 
     ratings = []
@@ -132,10 +139,13 @@ def _get_player_map_stats(db: LadderDatabase, mod: str, profile_id: str, season_
     for map_title, stats in _data.items():
         clean_map_title = _stripped_map_name(map_title)
         if clean_map_title in hist.keys():
-            hist[clean_map_title]["wins"] += stats["wins"]
-            hist[clean_map_title]["losses"] += stats["losses"]
+            hist[clean_map_title]["wins"] += int(stats["wins"])
+            hist[clean_map_title]["losses"] += int(stats["losses"])
         else:
-            hist[clean_map_title] = stats
+            hist[clean_map_title] = {
+                "wins": int(stats["wins"]),
+                "losses": int(stats["losses"]),
+            }
 
     map_names = list(hist.keys())
     map_win_data = [m["wins"] for m in hist.values()]
