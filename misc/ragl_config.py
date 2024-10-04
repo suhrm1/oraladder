@@ -3,17 +3,17 @@ from datetime import date, timedelta
 LEAGUE_TITLE = "Red Alert Global League"
 LEAGUE_TITLE_SHORT = "RAGL"
 TITLE_IMAGE = "ragl-logo.png"
-SEASON = 15
-START_TIME = date(2023, 10, 9)
+SEASON = 16
+START_TIME = date(2024, 10, 7)
 GROUP_STAGE_WEEKS = 7
 PLAYOFF_WEEKS = 3
 DURATION_WEEKS = GROUP_STAGE_WEEKS + PLAYOFF_WEEKS
 END_TIME = START_TIME + timedelta(weeks=DURATION_WEEKS)
-MAP_PACK_VERSION = "2023-10-12"
+MAP_PACK_VERSION = "2024-09-29"
 RELEASE = "release-20231010"
 RELEASE_URL = "https://github.com/OpenRA/OpenRA/releases/tag/" + RELEASE
-SCHEDULE_URL = "https://forum.openra.net/viewtopic.php?f=85&t=21802"
-RULES_URL = "https://forum.openra.net/viewtopic.php?f=85&t=21790"
+SCHEDULE_URL = "https://forum.openra.net/viewtopic.php?f=85&t=21935"
+RULES_URL = "https://forum.openra.net/viewtopic.php?f=85&t=21924"
 PRIZE_POOL = "TBA"
 DISCORD_URL = "https://discord.gg/99zBDuS"
 DISCORD_NAME = "Red Alert Competitive Discord"
