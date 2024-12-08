@@ -5,11 +5,11 @@ Divisions:
         - [17239, Fazzz]
         - [18968, Nightingale]
         - [6430, Blackened]
-        - [6793, maceman]
+        - [6793, Unano]
         - [11913, Duke Bones]
         - [21084, inno]
         - [7304, Upps]
-        - [13710, Ekanim]
+        - [13710, Mint]
         - [3952, anjew]
         - [15428, bete]
         - [5292, Mo]
@@ -31,3 +31,12 @@ Forfeit:
     - 18968
     - 15469
     - 20136
+
+Playoffs:
+    Masters Finale:
+        bestof: 5
+        players:
+            - 6430
+            - 17239
+            - 21084
+            - 6793
