@@ -7,6 +7,84 @@ mods = dict(
         # supports_analysis=True,
         mappacks=(
             dict(
+                label="2025.1",
+                filename="ladder-map-pack-2025.1.zip",
+                changelog="""
+                    New map pack available since January, 2025, using
+                    <a href="https://github.com/tttppp/ora-balance-iteration/blob/4.4/CHANGELOG.md" target="_blank">Balance Iteration 4.4</a>..
+                """,
+                maps=(
+                    ("Hearts", "Super Newbie"),
+                    ("Marigold Town", "Super Newbie"),
+                    ("Sandbox", "Super Newbie"),
+                    ("Vernon", "Super Newbie"),
+                    ("Rift 2", "Super Newbie"),
+                    ("Green Path", "Super Newbie"),
+                    ("Desert Warrior", "J MegaTank"),
+                    ("Under Radar", "J MegaTank"),
+                    ("Green Belt", "Christian"),
+                    ("Lastened", "Pinkthoth"),
+                    ("Dryened", "Pinkthoth"),
+                    ("Straightened", "Pinkthoth"),
+                    ("Pitfight", "kazu"),
+                    ("Ysmir", "kazu"),
+                ),
+            ),
+            dict(
+                label="2024.3",
+                filename="ladder-map-pack-2024.3.zip",
+                changelog="""
+                    Extension of previous map pack, available since August, 2024, using
+                    <a href="https://github.com/tttppp/ora-balance-iteration/blob/4.3/CHANGELOG.md" target="_blank">Balance Iteration 4.3</a>..
+                """,
+                maps=(
+                    ("Champion", "J MegaTank"),
+                    ("Discovery", "Lad"),
+                    ("Harmony", "Lad"),
+                    ("Inhospitality", "Lad"),
+                    ("The Line", "Lad"),
+                    ("Teared Strait", "mo"),
+                    ("Oasis", "Blackened"),
+                    ("Fallout", "Blackened"),
+                    ("Wasted Opportunity", "Lad"),
+                    ("Kriegsschweine", "Upps"),
+                    ("Command and Control", "Blackened"),
+                    ("Sullied Valleys", "mo"),
+                    ("Cliffwoods", "Pinkthoth"),
+                    ("Coldened", "Pinkthoth"),
+                    ("Messened", "Pinkthoth"),
+                    ("Descending", "Pinkthoth"),
+                    ("Hinterlands", "Pinkthoth"),
+                    ("The Wold", "Pinkthoth"),
+                    ("Dry Creek Run", "Blackened"),
+                    ("Onyx", "eskimo"),
+                    ("Shadowfiend II", "kazu"),
+                    ("Fury Sands II", "eskimo"),
+                    ("Forgotten Plains", "eskimo"),
+                ),
+            ),
+            dict(
+                label="2024.2",
+                filename="ladder-map-pack-2024.2.zip",
+                changelog="""
+                    New map pack available since May, 2024, using
+                    <a href="https://github.com/tttppp/ora-balance-iteration/blob/4.2/CHANGELOG.md" target="_blank">Balance Iteration 4.2</a>..
+                """,
+                maps=(
+                    ("Champion", "J MegaTank"),
+                    ("Discovery", "Lad"),
+                    ("Teared Strait", "mo"),
+                    ("Oasis", "Blackened"),
+                    ("Wasted Opportunity", "Lad"),
+                    ("Kriegsschweine", "Upps"),
+                    ("Command and Control", "Blackened"),
+                    ("Sullied Valleys", "mo"),
+                    ("The Wold", "Pinkthoth"),
+                    ("Dry Creek Run", "Blackened"),
+                    ("Forgotten Plains", "eskimo"),
+                ),
+            ),
+            dict(
                 label="2024.1",
                 filename="ladder-map-pack-2024.1.zip",
                 changelog="""
