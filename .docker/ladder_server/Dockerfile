@@ -1,4 +1,4 @@
-FROM debian:latest
+FROM debian:11
 
 RUN apt-get update && apt-get install -y python3 python3-pip wget nano libicu67 && apt-get clean all \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
@@ -8,14 +8,15 @@ RUN useradd -m openra
 WORKDIR /tmp
 
 ARG OPENRA_MOD="Red-Alert"
-ARG RELEASE_VERSION="20230218"
-ARG RELEASE_TYPE="playtest"
+ARG RELEASE_VERSION="20231010"
+ARG RELEASE_TYPE="release"
 ENV MOD="ra"
 
-ENV APPIMAGE_FILENAME=OpenRA-${OPENRA_MOD}-${RELEASE_TYPE}-x86_64.AppImage
-ENV APPIMAGE_URL=https://github.com/OpenRA/OpenRA/releases/download/${RELEASE_TYPE}-${RELEASE_VERSION}/${APPIMAGE_FILENAME}
-
-RUN wget $APPIMAGE_URL && mv $APPIMAGE_FILENAME OpenRA.AppImage
+RUN if [ $RELEASE_TYPE = "release" ]; \
+    then APPIMAGE_FILENAME=OpenRA-${OPENRA_MOD}-x86_64.AppImage; \
+    else APPIMAGE_FILENAME=OpenRA-${OPENRA_MOD}-${RELEASE_TYPE}-x86_64.AppImage; fi; \
+    APPIMAGE_URL=https://github.com/OpenRA/OpenRA/releases/download/${RELEASE_TYPE}-${RELEASE_VERSION}/${APPIMAGE_FILENAME}; \
+    wget $APPIMAGE_URL && mv $APPIMAGE_FILENAME OpenRA.AppImage
 
 # Workaround for AppImages not running in Docker
 # see https://github.com/AppImage/AppImageKit/issues/828
