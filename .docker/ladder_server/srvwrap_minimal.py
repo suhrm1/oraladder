@@ -42,7 +42,7 @@ World:
 		GameSpeed: default
 		GameSpeedDropdownLocked: true
 	MapStartingLocations:
-		SeparateTeamSpawnsCheckboxEnabled: true
+		SeparateTeamSpawnsCheckboxEnabled: false
 		SeparateTeamSpawnsCheckboxLocked: true
 	SpawnStartingUnits:
 		StartingUnitsClass: none
