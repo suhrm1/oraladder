@@ -1,0 +1,42 @@
+Divisions:
+
+    Masters:
+        - [15469, not happy]
+        - [17239, Fazzz]
+        - [18968, Nightingale]
+        - [6430, Blackened]
+        - [6793, Unano]
+        - [11913, Duke Bones]
+        - [21084, inno]
+        - [7304, Upps]
+        - [13710, Mint]
+        - [3952, anjew]
+        - [15428, bete]
+        - [5292, Mo]
+
+    Minions:
+        - [7387, TTTPPP]
+        - [16066, milkman]
+        - [7714, ORA_CN-Hans]
+        - [17607, BigHALK]
+        - [18864, fiwo]
+        - [8869, Sigil]
+        - [6751, Tailix Killa Mentor]
+        - [18359, goldie]
+        - [20339, Sudothinker]
+        - [20136, Gregory_Mhf]
+        - [21155, sliceoflife]
+
+Forfeit:
+    - 18968
+    - 15469
+    - 20136
+
+Playoffs:
+    Masters Finale:
+        bestof: 5
+        players:
+            - 6430
+            - 17239
+            - 21084
+            - 6793
