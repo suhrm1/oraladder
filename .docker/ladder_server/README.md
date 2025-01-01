@@ -38,13 +38,10 @@ docker run -dit \
     -v ./replays/:/home/openra/.openra/Replays/$MOD/$RELEASE/:rw \
     -v ./maps/$MOD/:/home/openra/lib/openra/mods/$MOD/maps/:rw \
     -v ./banned_profiles:/home/openra/banned_profiles:ro \
-    --add-host="resource.openra.net:127.0.0.99" \
     --restart always \
     --name openra_server \
     oraladder/server:latest
 docker exec -it -u root openra_server sh -c "chown openra: -R /home/openra/.openra/"
 ```
-
-Notably, `--add-host="resource.openra.net:127.0.0.99"` prevents the game server to download maps from the OpenRA Resource Center, effectively locking the map pool to what is locally available in the `maps` directory.
 
 Mod can be switched between Red Alert and Tiberian Dawn by setting the environment variable `Mod=ra` or `Mod=cnc` (NB: not `td`!).
