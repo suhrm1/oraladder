@@ -6,5 +6,12 @@ ProfileIDBlacklist=$BANS
 export ProfileIDBlacklist
 echo "Banned profiles: ${ProfileIDBlacklist:-}"
 
+# Read map pool from /home/openra/mappool
+POOL_FILE="/home/openra/mappool"
+POOL=$(python3 -c "from srvwrap_minimal import load_mappool_from_file; load_mappool_from_file(\"$POOL_FILE\")")
+MapPool=$POOL
+export MapPool
+echo "Map pool: ${MapPool:-}"
+
 echo "Starting OpenRA server."
 /home/openra/server.sh

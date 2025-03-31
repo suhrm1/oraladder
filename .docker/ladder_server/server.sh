@@ -14,7 +14,10 @@ ProfileIDBlacklist="${ProfileIDBlacklist:-""}"
 ProfileIDWhitelist="${ProfileIDWhitelist:-""}"
 
 # Allow or suppress downloading maps from OpenRA Resource Center
-QueryMapRepository=${QueryMapRepository:-"False"}
+QueryMapRepository=${QueryMapRepository:-"True"}
+
+# Define server map pool (comma-separated list of map hashes)
+MapPool=${MapPool:-""}
 
 EnableSingleplayer="${EnableSingleplayer:-"False"}"
 EnableSyncReports="${EnableSyncReports:-"False"}"
@@ -24,8 +27,8 @@ ShareAnonymizedIPs="${ShareAnonymizedIPs:-"True"}"
 SupportDir="${SupportDir:-""}"
 
 # We rotate maps from the map folder to start with a random pick after each game
-hash=$(shuf -n1 -e /home/openra/usr/lib/openra/mods/${MOD}/maps/*.oramap)
-Map=$(/home/openra/AppRun --utility --map-hash $hash)
+#hash=$(shuf -n1 -e /home/openra/usr/lib/openra/mods/${MOD}/maps/*.oramap)
+#Map=$(/home/openra/AppRun --utility --map-hash $hash)
 
 # Start the game server
 /home/openra/AppRun --server \
@@ -43,5 +46,5 @@ Map=$(/home/openra/AppRun --utility --map-hash $hash)
   Server.EnableSyncReports="$EnableSyncReports" \
   Server.EnableGeoIP="$EnableGeoIP" \
   Server.ShareAnonymizedIPs="$ShareAnonymizedIPs" \
-  Server.Map="$Map" \
+  Server.MapPool="$MapPool" \
   Engine.SupportDir="$SupportDir"
