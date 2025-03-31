@@ -1,5 +1,6 @@
 import os
 import re
+import logging
 
 _overrides = dict(
     ra="""
@@ -134,3 +135,18 @@ def apply_bans(source_file: str):
     ban_str = ",".join(str(profile_id) for profile_id in profile_ids)
     os.environ["ProfileIDBlacklist"] = ban_str
     print(ban_str)
+
+
+def load_mappool_from_file(source_file: str):
+    logging.info(f"Loading map pool from file {source_file}")
+    try:
+        with open(source_file) as pool_file:
+            mp = pool_file.read()
+            if "," in mp:
+                mp = ",".join([m.replace("\n", "") for m in mp.split(",")])
+            elif "\n" in mp:
+                mp = mp.replace("\n", ",")
+        print(mp)
+    except FileNotFoundError:
+        logging.warning(f"No map pool file found. Continuing with environment variable $MapPool")
+        print(os.getenv("MapPool"))
