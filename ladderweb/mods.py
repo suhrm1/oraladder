@@ -2,10 +2,36 @@ mods = dict(
     ra=dict(
         label="Red Alert",
         icon="icon-ra.png",
-        url="https://github.com/OpenRA/OpenRA/releases/tag/release-20231010",
-        release="release-20231010",
+        url="https://github.com/OpenRA/OpenRA/releases/tag/release-20250330",
+        release="release-20250330",
         # supports_analysis=True,
         mappacks=(
+            dict(
+                label="2025.2",
+                filename="ladder-map-pack-2025.2.zip",
+                changelog="""
+                    Map pack for new OpenRA release (version 20250330) available since April, 2025, using
+                    <a href="https://github.com/tttppp/ora-balance-iteration/blob/4.4.1/CHANGELOG.md" target="_blank">Balance Iteration 4.4.1</a>..
+                """,
+                maps=(
+                    ("Snap", "Blackened"),
+                    ("Duskwood", "i like men"),
+                    ("Wetlands", "i like men"),
+                    ("Ore Egano", "kazu"),
+                    ("Dash", "Lad"),
+                    ("Fairyland", "Lad"),
+                    ("Hillside Offensive", "Pinkthoth"),
+                    ("Stageira", "Pinkthoth"),
+                    ("The Ravine", "Pinkthoth"),
+                    ("Tuonela", "Pinkthoth"),
+                    ("Crownsbury", "Pinkthoth"),
+                    ("Krakow", "poop"),
+                    ("Patches", "Super Newbie"),
+                    ("Rift 2", "Super Newbie"),
+                    ("River Crossing 2023", "Upps"),
+                    ("Timian", "Widow"),
+                ),
+            ),
             dict(
                 label="2025.1",
                 filename="ladder-map-pack-2025.1.zip",
@@ -466,14 +492,14 @@ mods = dict(
     td=dict(
         label="Tiberian Dawn",
         icon="icon-td.png",
-        url="https://github.com/OpenRA/OpenRA/releases/tag/release-20231010",
-        release="release-20231010",
+        url="https://github.com/OpenRA/OpenRA/releases/tag/release-20250330",
+        release="release-20250330",
         mappacks=(
             dict(
                 label="2023.0 v2",
                 filename="ladder-map-pack-td-2023.0-release20231010.zip",
                 changelog="""
-                    Updated map pack for OpenRA Release 20231010.
+                    Updated map pack for OpenRA Release 20231010 and newer.
                 """,
                 maps=(
                     ("16:9", "norman"),
