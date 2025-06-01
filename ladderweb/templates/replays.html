@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<h2>{% block title %}Replay Logbook{% endblock %}</h2>
+
+<div>
+	<p>Search below for interesting replays to enjoy spoiler-free. The table contains games between established
+	OpenRA Ladder players with some hints at how interesting their game might be. Game lengths are masked and
+	partially randomized. We calculate scores on how good the involved players are based on their past Ladder Season
+	ratings and how similar they can be expected in skill. No guarantees that any of the games are actually entertaining.
+	Complaints shall be directed at the involved players personally.</p>
+</div>
+
+<table id="replays-table" class="display" data-page-length='25'>
+	<thead>
+	<tr>
+		<th>Mod</th>
+		<th>Date</th>
+		<th>Start time</th>
+		<th>Player 1</th>
+		<th>Player 2</th>
+		<th>Map</th>
+		<th title="Rough estimate of game length">Game length</th>
+		<th title="How close are players considered in skill; lower number is closer to each other">Rivalry tier</th>
+		<th title="How good are the players - based on past Ladder season rankings, lower number is better">Skill tier</th>
+		<th title="Rough estimate of how interesting the matchup should be, combines player skill levels and how close they are matched; lower number is better">Recommendation tier</th>
+		<th></th>
+	</tr>
+	</thead>
+</table>
+
+<script>
+$(document).ready(
+	function () {
+		$('#replays-table').DataTable({
+			ajax: { url: "{{ ajax_url|safe }}", dataSrc:"" },
+    		columnDefs: [{ orderable: false, targets: 10 }],
+			columns: [
+				{ data: 'mod' },
+				{ data: 'game_date' },
+				{ data: 'start_time' },
+				{ data: 'player1', className: 'player_render', render: player_render },
+				{ data: 'player2', className: 'player_render', render: player_render },
+				{ data: 'map_title' },
+				{ data: 'game_length' },
+				{ data: 'rivalry_grade' },
+				{ data: 'skill_level' },
+				{ data: 'recommendation_level' },
+				{ data: 'replay', render: replay_render },
+			],
+			bSort: true,
+		});
+	}
+);
+</script>
+
+{% endblock %}

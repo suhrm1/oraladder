@@ -720,3 +720,13 @@ class LadderDatabase:
         select = f"SELECT filename FROM game WHERE hash='{hash}';"
         filename = self.exec(select, fetch=True)[0][0]
         return filename
+
+    def get_replays(self, mod: str, offset: int = 0, limit: int = 100):
+        select = (
+            f"SELECT * FROM recommended_replays "
+            f"WHERE `mod`='{mod}' "
+            f"AND recommendation_level IS NOT NULL"
+            f"ORDER BY start_time DESC LIMIT {limit} OFFSET {offset}"
+        )
+        res = self.exec(select, fetch=True)
+        return self._result_to_list(res)
