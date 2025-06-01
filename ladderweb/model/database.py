@@ -725,7 +725,7 @@ class LadderDatabase:
         select = (
             f"SELECT * FROM recommended_replays "
             f"WHERE `mod`='{mod}' "
-            f"AND recommendation_level IS NOT NULL"
+            f"AND recommendation_level IS NOT NULL "
             f"ORDER BY start_time DESC LIMIT {limit} OFFSET {offset}"
         )
         res = self.exec(select, fetch=True)
