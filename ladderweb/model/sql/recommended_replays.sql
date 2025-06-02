@@ -87,25 +87,25 @@ cte_game_masked AS (
 			'extremely short'
 		END END END END as game_length
 		, CASE
-			WHEN pairing_score<=0.1 THEN 1
-			ELSE CASE WHEN pairing_score<=0.2 THEN 2
-			ELSE CASE WHEN pairing_score<=0.3 THEN 3
-			ELSE CASE WHEN pairing_score<=0.5 THEN 4
-			ELSE CASE WHEN pairing_score<=0.9 THEN 5
+			WHEN pairing_score<=0.1 THEN 'A'
+			ELSE CASE WHEN pairing_score<=0.2 THEN 'B'
+			ELSE CASE WHEN pairing_score<=0.3 THEN 'C'
+			ELSE CASE WHEN pairing_score<=0.5 THEN 'D'
+			ELSE CASE WHEN pairing_score<=0.9 THEN 'E'
 			END END END END END
 			AS rivalry_grade
-		, CASE WHEN avg_base_rating > 3000 THEN 1 ELSE
-			CASE WHEN avg_base_rating > 2800 THEN 2 ELSE
-			CASE WHEN avg_base_rating > 2300 THEN 3 ELSE
-			CASE WHEN avg_base_rating > 1800 THEN 4 ELSE
-			CASE WHEN avg_base_rating > 1000 THEN 5 ELSE
-			6 END END END END END as skill_level
+		, CASE WHEN avg_base_rating > 2900 THEN 'A' ELSE
+			CASE WHEN avg_base_rating > 2400 THEN 'B' ELSE
+			CASE WHEN avg_base_rating > 1800 THEN 'C' ELSE
+			CASE WHEN avg_base_rating > 1200 THEN 'D' ELSE
+			CASE WHEN avg_base_rating > 700 THEN 'E'
+			END END END END END as skill_level
 		, CASE
-			WHEN avg_base_rating >= 2900 AND pairing_score<=0.3 THEN 1
-			ELSE CASE WHEN avg_base_rating >= 2000 AND pairing_score<=0.3 THEN 2
-			ELSE CASE WHEN avg_base_rating >= 1800 AND pairing_score<=0.3 THEN 3
-			ELSE CASE WHEN avg_base_rating >=1500 AND pairing_score<=0.3 THEN 4
-			ELSE CASE WHEN pairing_score<=0.1 THEN 5
+			WHEN avg_base_rating >= 2800 AND pairing_score<=0.3 THEN 'A'
+			ELSE CASE WHEN avg_base_rating >= 2300 AND pairing_score<=0.3 THEN 'B'
+			ELSE CASE WHEN avg_base_rating >= 1600 AND pairing_score<=0.3 THEN 'C'
+			ELSE CASE WHEN avg_base_rating >=1000 AND pairing_score<=0.3 THEN 'D'
+			ELSE CASE WHEN pairing_score<=0.1 THEN 'E'
 			END END END END END
 			AS recommendation_level
 	FROM cte_game_metrics
