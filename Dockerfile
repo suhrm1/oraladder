@@ -1,0 +1,50 @@
+FROM python:3.10
+
+RUN useradd -m -s /bin/bash openra
+
+RUN apt-get update && apt-get install -y make curl nano sqlite3 libmariadb-dev  \
+    && apt-get clean
+
+RUN mkdir /home/openra/oraladder
+
+WORKDIR /home/openra/oraladder
+
+ADD ./laddertools ./laddertools
+ADD ./ladderweb ./ladderweb
+ADD ./LICENSE ./
+
+RUN chown openra: -R /home/openra
+
+USER openra
+# https://github.com/chartjs/Chart.js/releases/latest
+ENV CHART_JS_VERSION="2.9.3"
+
+# https://github.com/jquery/jquery/releases/latest
+ENV JQUERY_VERSION="3.6.0"
+
+# https://github.com/DataTables/DataTables/releases/latest
+ENV DATATABLES_VERSION="1.10.24"
+
+RUN cd ladderweb/static/ \
+    && curl -L https://cdnjs.cloudflare.com/ajax/libs/Chart.js/${CHART_JS_VERSION}/Chart.min.css -o Chart.min.css \
+    && curl -L https://cdnjs.cloudflare.com/ajax/libs/Chart.js/${CHART_JS_VERSION}/Chart.bundle.min.js -o Chart.bundle.min.js \
+    && curl -L https://cdn.datatables.net/v/dt/dt-${DATATABLES_VERSION}/datatables.min.js -o datatables.min.js \
+    && curl -L https://code.jquery.com/jquery-${JQUERY_VERSION}.min.js -o jquery.min.js
+
+COPY requirements.txt .
+
+RUN python3 -m venv venv/
+
+RUN . venv/bin/activate && pip install gunicorn && pip install -r requirements.txt
+
+RUN mkdir instance && mv -v ladderweb/seasons.yml instance/
+
+ENV GUNICORN_WORKER_TIMEOUT=90
+ENV GUNICORN_WORKERS=4
+ENV LOG_LEVEL=info
+
+CMD venv/bin/gunicorn -b 0.0.0.0:8000 \
+    --timeout $GUNICORN_WORKER_TIMEOUT \
+    --workers $GUNICORN_WORKERS \
+    --log-level=$LOG_LEVEL \
+    ladderweb:app

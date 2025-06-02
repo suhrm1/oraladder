@@ -179,7 +179,8 @@ player_mod_stats = Table(
     Column("ratio", String(8), nullable=True),
 )
 
-season_games = """CREATE OR REPLACE VIEW SeasonGames AS
+season_games = """CREATE
+OR REPLACE VIEW SeasonGames AS
 (
     SELECT DISTINCT r0.`mod`,
         r0.season_id,
@@ -210,6 +211,9 @@ season_games = """CREATE OR REPLACE VIEW SeasonGames AS
 )"""
 # for durations: use "%T" on TIME_FORMAT to get hh:mm:ss format
 
+with open("ladderweb/model/sql/recommended_replays.sql", "r") as f:
+    recommended_replays = f.read()
+
 
 def init_mariadb(
     engine: Optional[Engine] = None,
@@ -222,5 +226,8 @@ def init_mariadb(
     with engine.begin() as txn:
         if replace:
             metadata_obj.drop_all(txn)
+        # Create tables
         metadata_obj.create_all(txn, checkfirst=True)
+        # Create additional views
         txn.execute(text(season_games))
+        txn.execute(text(recommended_replays))
