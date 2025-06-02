@@ -130,6 +130,7 @@ def _get_menu(**args):
                 ("High Score", "highscore"),
                 ("History", "history"),
                 ("Information", "info"),
+                ("Replays", "replays"),
             )
         ],
     )
@@ -361,6 +362,56 @@ def info():
         period_info=season.get_info(),
         mod=mods[cur_mod],
         mod_id=cur_mod,
+    )
+
+
+@app.route("/api/recommended_replays")
+def api_recommended_replays():
+    _mod = request.args.get("mod", "ra")
+    _limit = request.args.get("limit", 200)
+    _offset = request.args.get("offset", 0)
+    _replays = MainDB.get_replays(mod=_mod, limit=_limit, offset=_offset)
+    data = [
+        dict(
+            mod=row["mod"],
+            game_date=row["game_date"].isoformat(),
+            start_time=row["start_time"].isoformat()[11:13] + "h",
+            # game_hash=row["game_hash"],
+            map_title=row["map_title"],
+            player1=dict(
+                name=row["p1_name"],
+                url=url_for("player", profile_id=row["p1_id"]) + _args_url(),
+            ),
+            player2=dict(
+                name=row["p2_name"],
+                url=url_for("player", profile_id=row["p2_id"]) + _args_url(),
+            ),
+            game_length=row["game_length"],
+            rivalry_grade=row["rivalry_grade"],
+            skill_level=row["skill_level"],
+            recommendation_level=row["recommendation_level"],
+            replay=dict(
+                hash=row["game_hash"],
+                url=url_for("replay", replay_hash=row["game_hash"]) + _args_url(),
+                supports_analysis=mods[_mod].get("supports_analysis", False),
+            ),
+        )
+        for row in _replays
+    ]
+    return jsonify(data)
+
+
+@app.route("/replays")
+def replays():
+    menu = _get_menu()
+    cur_endpoint, cur_mod, cur_season = _get_request_params()
+
+    return render_template(
+        "replays.html",
+        navbar_menu=menu,
+        mod_id=cur_mod,
+        season_id=cur_season,
+        ajax_url=url_for("api_recommended_replays", mod=cur_mod),
     )
 
 

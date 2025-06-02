@@ -1,3 +1,8 @@
+_sql_rec_replays: str = None
+with open("ladderweb/model/sql/recommended_replays.sql", "r") as f:
+    _sql_rec_replays = f.read()
+
+# noinspection SqlNoDataSourceInspection
 CREATE_STATEMENTS = {
     "season": """CREATE TABLE IF NOT EXISTS season (
         id              VARCHAR(63) NOT NULL,
@@ -138,3 +143,6 @@ CREATE_STATEMENTS = {
             LEFT JOIN accounts p1 ON p1.profile_id = g.profile_id1
            ORDER BY g.end_time DESC;""",
 }
+
+if _sql_rec_replays is not None:
+    CREATE_STATEMENTS["recommended_replays"] = _sql_rec_replays
