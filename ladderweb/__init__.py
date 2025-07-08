@@ -25,9 +25,9 @@ from typing import Optional, Tuple
 import numpy as np
 import sqlite3
 from datetime import date, timedelta
+from markupsafe import escape
 from flask import (
     Flask,
-    escape,
     g,
     jsonify,
     render_template,
