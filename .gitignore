@@ -11,3 +11,4 @@ raglweb/static/ragl-map-pack-*.zip
 venv
 __pycache__
 *.min.js
+*.sqlite3*
