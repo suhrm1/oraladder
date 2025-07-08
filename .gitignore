@@ -9,3 +9,5 @@ ladderweb/static/jquery.min.js
 oraladder.egg-info
 raglweb/static/ragl-map-pack-*.zip
 venv
+__pycache__
+*.min.js
