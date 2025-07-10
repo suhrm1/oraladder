@@ -35,16 +35,16 @@ ladderdev: initladderdev
 initladderdev: $(VENV) $(LADDER_STATIC) $(LADDER_DATABASES)
 
 ladderweb/static/Chart.min.css:
-	$(CURL) -L https://cdnjs.cloudflare.com/ajax/libs/Chart.js/$(CHART_JS_VERSION)/Chart.min.css -o $@
+	$(CURL) -s -L https://cdnjs.cloudflare.com/ajax/libs/Chart.js/$(CHART_JS_VERSION)/Chart.min.css -o $@
 
 ladderweb/static/Chart.bundle.min.js:
-	$(CURL) -L https://cdnjs.cloudflare.com/ajax/libs/Chart.js/$(CHART_JS_VERSION)/Chart.bundle.min.js -o $@
+	$(CURL) -s -L https://cdnjs.cloudflare.com/ajax/libs/Chart.js/$(CHART_JS_VERSION)/Chart.bundle.min.js -o $@
 
 ladderweb/static/datatables.min.js:
-	$(CURL) -L https://cdn.datatables.net/v/dt/dt-$(DATATABLES_VERSION)/datatables.min.js -o $@
+	$(CURL) -s -L https://cdn.datatables.net/v/dt/dt-$(DATATABLES_VERSION)/datatables.min.js -o $@
 
 ladderweb/static/jquery.min.js:
-	$(CURL) -L https://code.jquery.com/jquery-$(JQUERY_VERSION).min.js -o $@
+	$(CURL) -s -L https://code.jquery.com/jquery-$(JQUERY_VERSION).min.js -o $@
 
 $(LADDER_DATABASES): instance
 	([ -f $@ ] ||  $(VENV)/bin/ora-ladder -d $@)
