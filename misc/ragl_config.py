@@ -14,7 +14,7 @@ RELEASE = "release-20250330"
 RELEASE_URL = "https://github.com/OpenRA/OpenRA/releases/tag/" + RELEASE
 SCHEDULE_URL = "https://forum.openra.net/viewtopic.php?f=85&t=22104"
 RULES_URL = "https://forum.openra.net/viewtopic.php?f=85&t=22080"
-PRIZE_POOL = ">80 EUR"
+PRIZE_POOL = "100 EUR"
 DISCORD_URL = "https://discord.gg/99zBDuS"
 DISCORD_NAME = "Red Alert Competitive Discord"
 GAMES_PER_MATCH = 2
