@@ -2,7 +2,7 @@ PYTHON ?= python3
 CURL   ?= curl
 VENV   ?= venv
 
-RAGL_MAP_POOL = misc/map-pools/ragl-s16.maps
+RAGL_MAP_POOL = misc/map-pools/ragl-s17.maps
 RAGL_MAP_PACK_VERSION := $(shell $(PYTHON) misc/ragl_config.py MAP_PACK_VERSION)
 RAGL_MAP_PACK = raglweb/static/ragl-map-pack-$(RAGL_MAP_PACK_VERSION).zip
 
