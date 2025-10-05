@@ -34,7 +34,7 @@ from .forfeit_games import (
     get_forfeit_win_loss_stats,
 )
 from .playoffs import get_playoff2, get_playoff4, PlayoffOutcome
-from ladderweb.announcements import get_announcements
+from .announcements import get_announcements
 
 
 def _db_get():
