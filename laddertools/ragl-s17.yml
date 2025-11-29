@@ -30,3 +30,12 @@ Divisions:
 Forfeit:
     - 21084
     - 16677
+
+Playoffs:
+    Masters Finale:
+        bestof: 7
+        players:
+            - 17239
+            - 7304
+            - 16814
+            - 19305
