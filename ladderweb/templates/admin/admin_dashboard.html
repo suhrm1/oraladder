@@ -1,0 +1,163 @@
+<!doctype html>
+{##
+ # Admin dashboard — system status overview and action forms.
+ #
+ # Injected template variables:
+ #   status        – dict with game_count, account_count, banned_count, mods, seasons, config
+ #   default_mod   – first configured mod (e.g. "ra")
+ #   default_replay_path – replay folder for the default mod
+ #   season_ids    – {mod: [sorted season ids]}
+ #   csrf_token    – callable that returns a CSRF token
+ #}
+<html>
+<head>
+    <title>OpenRA Ladder - Admin</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='nav.css') }}">
+</head>
+<body>
+    <header>
+        <h1>OpenRA 1v1 Ladder — Admin</h1>
+        <p><a href="{{ url_for('home') }}">&larr; Back to site</a> | <a href="{{ url_for('admin.replays') }}">Manage Replays</a></p>
+    </header>
+
+    <div class="admin-wrap" style="padding: 1em; max-width: 1000px; margin: 0 auto;">
+        {# Flash messages (success/error) #}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <ul class="flashes">
+            {% for category, message in messages %}
+            <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        {% endwith %}
+
+        {# Status cards #}
+        <div style="display: flex; gap: 1em; flex-wrap: wrap; margin-bottom: 2em;">
+            <div style="border: 1px solid #ccc; padding: 1em; flex: 1; min-width: 120px;">
+                <strong>{{ status.game_count }}</strong><br>Games
+            </div>
+            <div style="border: 1px solid #ccc; padding: 1em; flex: 1; min-width: 120px;">
+                <strong>{{ status.account_count }}</strong><br>Accounts
+            </div>
+            <div style="border: 1px solid #ccc; padding: 1em; flex: 1; min-width: 120px;">
+                <strong>{{ status.banned_count }}</strong><br>Banned
+            </div>
+        </div>
+
+        {# Action forms #}
+        <h3>Actions</h3>
+        <div style="display: flex; flex-direction: column; gap: 0.8em; margin-bottom: 2em;">
+
+            {# Parse Replays — scan a directory for new .orarep files #}
+            <form method="POST" action="{{ url_for('admin.parse_replays') }}" style="border: 1px solid #ccc; padding: 0.8em;">
+                <strong>Parse Replays</strong><br>
+                <label>Mod:
+                    <select name="mod" onchange="document.getElementById('replay_path').value=this.options[this.selectedIndex].dataset.replayPath || ''">
+                        {% for m in status.mods %}
+                        <option value="{{ m }}" {{ 'selected' if m == default_mod else '' }}
+                            data-replay-path="{{ status.config.get(m ~ '_default_replay_folder', '') }}">{{ m }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>Replay path: <input id="replay_path" name="replay_path" size="30" value="{{ default_replay_path }}"></label>
+                <label>Max age (days): <input name="max_file_age_days" size="4" value="7"></label>
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <button type="submit">Run</button>
+            </form>
+
+            {# Update Rankings — recalculate ratings for one or all seasons #}
+            <form method="POST" action="{{ url_for('admin.update_rankings') }}" style="border: 1px solid #ccc; padding: 0.8em;">
+                <strong>Update Rankings</strong><br>
+                <label>Mod:
+                    <select name="mod">
+                        <option value="">All mods</option>
+                        {% for m in status.mods %}
+                        <option value="{{ m }}" {{ 'selected' if m == default_mod else '' }}>{{ m }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>Season:
+                    <select name="season_id">
+                        <option value="">All seasons</option>
+                        {% for m in status.mods %}
+                        {% for sid in season_ids[m] %}
+                        <option value="{{ sid }}">{{ m }}/{{ sid }}</option>
+                        {% endfor %}
+                        {% endfor %}
+                    </select>
+                </label>
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <button type="submit">Run</button>
+            </form>
+
+            {# Rotate Season — close current 2m season and start a new one #}
+            <form method="POST" action="{{ url_for('admin.rotate_season') }}" style="border: 1px solid #ccc; padding: 0.8em;">
+                <strong>Rotate Current 2m Season</strong><br>
+                <label>Mod:
+                    <select name="mod">
+                        <option value="">All mods</option>
+                        {% for m in status.mods %}
+                        <option value="{{ m }}" {{ 'selected' if m == default_mod else '' }}>{{ m }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <button type="submit">Run</button>
+            </form>
+
+            {# Update Player Profiles — sync names/avatars from forum API #}
+            <form method="POST" action="{{ url_for('admin.update_profiles') }}" style="border: 1px solid #ccc; padding: 0.8em;">
+                <strong>Update Player Profiles</strong><br>
+                <span style="color: #666;">Refreshes avatar URLs from OpenRA Forum API.</span>
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" style="margin-left: 1em;">Run</button>
+            </form>
+
+            {# Full System Refresh — parse + rank + rotate for every mod #}
+            <form method="POST" action="{{ url_for('admin.system_refresh') }}" style="border: 1px solid #ccc; padding: 0.8em;">
+                <strong>Full System Refresh</strong><br>
+                <span style="color: #666;">Parse replays, update rankings, rotate seasons for all mods.</span>
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" style="margin-left: 1em;">Run</button>
+            </form>
+        </div>
+
+        {# Season overview table #}
+        <h3>Seasons</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <th style="text-align: left; border-bottom: 1px solid #ccc;">Mod</th>
+                <th style="text-align: left; border-bottom: 1px solid #ccc;">ID</th>
+                <th style="text-align: left; border-bottom: 1px solid #ccc;">Title</th>
+                <th style="text-align: left; border-bottom: 1px solid #ccc;">Active</th>
+                <th style="text-align: left; border-bottom: 1px solid #ccc;">Algorithm</th>
+                <th style="text-align: left; border-bottom: 1px solid #ccc;">Start</th>
+                <th style="text-align: left; border-bottom: 1px solid #ccc;">End</th>
+            </tr>
+            {% for s in status.seasons %}
+            <tr>
+                <td>{{ s.mod }}</td>
+                <td>{{ s.id }}</td>
+                <td>{{ s.title }}</td>
+                <td>{{ "Yes" if s.active else "No" }}</td>
+                <td>{{ s.algorithm }}</td>
+                <td>{{ s.start }}</td>
+                <td>{{ s.end }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+
+        {# Config value display #}
+        <h3 style="margin-top: 2em;">Configuration</h3>
+        <ul>
+            {% for k, v in status.config.items() %}
+            <li><strong>{{ k }}:</strong> {{ v }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+</body>
+</html>

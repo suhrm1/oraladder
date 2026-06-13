@@ -13,6 +13,8 @@ services:
       FLASK_LADDER_TD_DEFAULT_REPLAY_FOLDER: "/home/openra/replays/td"
       FLASK_LADDER_DELETED_REPLAY_FOLDER: "/home/openra/replays/deleted"
       FLASK_LADDER_BANS_FILE: "/home/openra/banned_profiles"
+      FLASK_LADDER_ADMIN_USERNAME: "admin"
+      FLASK_LADDER_ADMIN_PASSWORD: "admin"
     ports:
       - "8000:8000"
     depends_on:

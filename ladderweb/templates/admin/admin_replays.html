@@ -1,0 +1,189 @@
+<!doctype html>
+{##
+ # Admin replays page — browse active and previously deleted replays.
+ #
+ # Injected template variables:
+ #   tab         – "active" or "deleted"
+ #   replays     – list of replay dicts
+ #   mods        – distinct mod list for the filter dropdown
+ #   filters     – current filter values (mod, player, map_title, date_from, date_to)
+ #   csrf_token  – callable that returns a CSRF token
+ #}
+<html>
+<head>
+    <title>OpenRA Ladder - Admin Replays</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='nav.css') }}">
+    <style>
+        .admin-wrap a { color: #00bfff; }
+        .admin-wrap table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+        .admin-wrap th, .admin-wrap td { text-align: left; border-bottom: 1px solid #ccc; padding: 4px 6px; }
+        .admin-wrap th { background: #222; color: #eee; }
+        .admin-wrap tr:hover { background: #2a2a2a; }
+        .admin-wrap .filters { display: flex; gap: 0.5em; flex-wrap: wrap; margin-bottom: 1em; align-items: end; }
+        .admin-wrap .filters label { font-size: 0.85em; }
+        .admin-wrap .filters input, .admin-wrap .filters select { padding: 3px 6px; }
+        .faded { color: #888; }
+        .tabs { display: flex; gap: 0; margin-bottom: 1em; border-bottom: 1px solid #555; }
+        .tabs a { padding: 6px 16px; text-decoration: none; border: 1px solid #555; border-bottom: none; border-radius: 4px 4px 0 0; margin-bottom: -1px; background: #1a1a1a; color: #aaa; }
+        .tabs a.active { background: #222; color: #fff; border-color: #888; border-bottom-color: #222; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>OpenRA 1v1 Ladder — Admin Replays</h1>
+        <p><a href="{{ url_for('admin.dashboard') }}">&larr; Back to dashboard</a></p>
+    </header>
+
+    <div class="admin-wrap" style="padding: 1em; max-width: 1200px; margin: 0 auto;">
+        {# Flash messages #}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <ul class="flashes">
+            {% for category, message in messages %}
+            <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        {% endwith %}
+
+        {# Tab bar: Active / Deleted #}
+        <div class="tabs">
+            <a href="{{ url_for('admin.replays') }}" class="{{ 'active' if tab == 'active' else '' }}">Active Replays</a>
+            <a href="{{ url_for('admin.deleted_replays') }}" class="{{ 'active' if tab == 'deleted' else '' }}">Deleted Replays</a>
+        </div>
+
+        {# Filter form — re-submits to the current tab's endpoint #}
+        <form method="GET" action="{{ url_for('admin.replays' if tab == 'active' else 'admin.deleted_replays') }}" class="filters">
+            <label>Mod:
+                <select name="mod">
+                    <option value="">All</option>
+                    {% for m in mods %}
+                    <option value="{{ m }}" {{ 'selected' if filters.mod == m else '' }}>{{ m }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Player:
+                <input name="player" size="12" value="{{ filters.player }}" placeholder="name">
+            </label>
+            <label>Map:
+                <input name="map_title" size="12" value="{{ filters.map_title }}" placeholder="title">
+            </label>
+            <label>From:
+                <input name="date_from" type="date" value="{{ filters.date_from }}">
+            </label>
+            <label>To:
+                <input name="date_to" type="date" value="{{ filters.date_to }}">
+            </label>
+            <button type="submit">Filter</button>
+            <a href="{{ url_for('admin.replays' if tab == 'active' else 'admin.deleted_replays') }}" style="font-size:0.85em;">Clear</a>
+        </form>
+
+        {# Replay list form — wraps the table so checkboxes submit with it #}
+        <form method="POST"
+              action="{{ url_for('admin.delete_replays' if tab == 'active' else 'admin.undelete_replays') }}"
+              id="replay-form">
+            <input type="hidden" name="admin_password" id="admin_password_input" value="">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+            <p style="margin-bottom:0.5em;">
+                <strong>{{ replays|length }}</strong> replays
+                <span style="margin-left:1em; font-size:0.85em;">
+                    <label><input type="checkbox" onchange="document.querySelectorAll('.replay-check').forEach(c=>c.checked=this.checked)"> Select all</label>
+                </span>
+                {% if tab == 'active' %}
+                <button type="button" style="margin-left:1em; color:#c00;" onclick="confirmAction()">Delete Selected</button>
+                {% else %}
+                <button type="button" style="margin-left:1em; color:#0c0;" onclick="confirmAction()">Undelete Selected</button>
+                {% endif %}
+            </p>
+
+            {% if tab == 'active' %}
+            {# Info banner — explains what deletion means #}
+            <p style="font-size:0.8em; color:#999; margin-top:-0.3em;">
+                Deleting a replay removes it from the ladder and archives the .orarep file.
+                The match will not count in future ranking updates. Deleted replays are listed
+                in the <a href="{{ url_for('admin.deleted_replays') }}" style="color:#00bfff;">Deleted Replays</a> tab.
+            </p>
+            {% endif %}
+
+            <table>
+                <tr>
+                    <th style="width:28px;"></th>
+                    <th>Date</th>
+                    <th>Mod</th>
+                    <th>Player 1</th>
+                    <th>Player 2</th>
+                    <th>Map</th>
+                    <th>File</th>
+                    <th>Hash</th>
+                    {% if tab == 'deleted' %}<th>Deleted At</th>{% endif %}
+                </tr>
+                {% for r in replays %}
+                <tr>
+                    <td><input type="checkbox" name="replay_hashes" value="{{ r.hash }}" class="replay-check"></td>
+                    <td class="faded">{{ r.end_time[:10] }}</td>
+                    <td>{{ r.mod }}</td>
+                    <td>{{ r.player0_name }}</td>
+                    <td>{{ r.player1_name }}</td>
+                    <td>{{ r.map_title[:40] }}{{ '…' if r.map_title|length > 40 }}</td>
+                    <td class="faded" title="{{ r.filename }}">{{ r.filename.split('/')[-1][:30] }}</td>
+                    <td class="faded" style="font-family:monospace; font-size:0.8em;">{{ r.hash[:12] }}…</td>
+                    {% if tab == 'deleted' %}<td class="faded">{{ r.deleted_at[:19] }}</td>{% endif %}
+                </tr>
+                {% endfor %}
+            </table>
+        </form>
+    </div>
+
+    {# Password confirmation modal — shown before delete or undelete proceeds #}
+    <div id="pwd-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:999;">
+        <div style="background:#222; border:1px solid #555; border-radius:6px; padding:2em; max-width:360px; margin:15% auto; text-align:center;">
+            <p style="margin:0 0 1em 0;"><strong id="pwd-modal-title">Enter admin password to confirm</strong></p>
+            <input type="password" id="pwd-field" style="width:100%; box-sizing:border-box; padding:6px; margin-bottom:1em;">
+            <div style="display:flex; gap:0.5em; justify-content:center;">
+                <button onclick="submitPassword()" id="pwd-confirm-btn" style="color:#c00;">Confirm</button>
+                <button onclick="closeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    /** Open the password confirmation modal with an action label. */
+    function confirmAction() {
+        if (!document.querySelector('.replay-check:checked')) {
+            alert('No replays selected.');
+            return;
+        }
+        var isDelete = '{{ tab }}' === 'active';
+        document.getElementById('pwd-modal-title').textContent =
+            'Enter admin password to ' + (isDelete ? 'delete' : 'undelete');
+        document.getElementById('pwd-confirm-btn').style.color = isDelete ? '#c00' : '#0c0';
+        document.getElementById('pwd-modal').style.display = 'block';
+        document.getElementById('pwd-field').value = '';
+        document.getElementById('pwd-field').focus();
+    }
+
+    /** Close the modal without submitting. */
+    function closeModal() {
+        document.getElementById('pwd-modal').style.display = 'none';
+    }
+
+    /** Copy the password into the hidden form field and submit. */
+    function submitPassword() {
+        var pwd = document.getElementById('pwd-field').value;
+        if (!pwd) return;
+        document.getElementById('admin_password_input').value = pwd;
+        document.getElementById('replay-form').submit();
+    }
+
+    /* Keyboard shortcuts for the modal */
+    document.getElementById('pwd-field').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') submitPassword();
+        if (e.key === 'Escape') closeModal();
+    });
+    </script>
+</body>
+</html>

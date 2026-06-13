@@ -34,6 +34,7 @@ from flask import (
 )
 
 from ladderweb import api_system
+from ladderweb.admin import admin_bp
 from ladderweb.model.seasons import Season
 from ladderweb._flask_utils import api_key_authn, create_app
 from ladderweb.model import LadderDatabase
@@ -69,6 +70,7 @@ def _get_request_params() -> Tuple[str, str, str]:
 
 # Initialize the Flask application
 app = create_app()
+app.register_blueprint(admin_bp, url_prefix="/admin")
 
 db_settings = {
     "bans_file": app.config.get("LADDER_BANS_FILE", "instance/banned_profiles"),

@@ -10,3 +10,6 @@ oraladder.egg-info
 raglweb/static/ragl-map-pack-*.zip
 venv
 *__pycache__*
+
+# Ignore all OpenRA replays that might end up in project folder
+*.orarep
