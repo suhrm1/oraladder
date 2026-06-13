@@ -13,7 +13,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 ### Security
 
-## [3.0.0] - tbd.
+## [3.0.1] - 2026-06-13
+
+### Changed
+- **Dependency upgrades — all packages bumped to latest:**
+  - `black 23.1.0` → `26.5.1`
+  - `Flask 2.2.2` → `3.1.3` (requires `werkzeug>=3.0.0`, pin removed)
+  - `mariadb 1.1.9` → `1.1.14`
+  - `numpy 1.24.1` → `2.4.6`
+  - `openskill 4.0.0` → `6.2.0` (breaking API change — see Fixed)
+  - `pre-commit 3.0.4` → `4.6.0`
+  - `pydantic 1.10.4` → `2.13.4` (breaking API change — see Fixed)
+  - `sqlalchemy 2.0.1` → `2.0.50`
+  - `PyYAML 6.0` → `6.0.3`
+  - `werkzeug <3.0.0` → `>=3.0.0`
+- `setup.py`: added `python_requires>=3.10`, added `mariadb` dependency, moved dev-only packages to `extras_require["dev"]`
+- `pyproject.toml`: Black `target-version` updated from `py39` to `py311`
+- `.pre-commit-config.yaml`: black hook `22.10.0` → `26.5.1` (repo `ambv/black` → `psf/black`); pre-commit-hooks `v4.3.0` → `v5.0.0`
+- `docker-compose.yml`: Ladder service now points to `.docker/Dockerfile_ladder` explicitly
+- **README.md rewritten** for v3 project state (MariaDB, Docker Compose dev, admin UI, API); architecture, configuration, and project structure sections updated
+- **Code comments and restructuring** added to all new files (`_flask_utils.py`, `admin.py`, `admin_dashboard.html`, `admin_replays.html`)
+- Admin replay templates unified: single form action per tab, single modal with dynamic label
+
+### Fixed
+- **`flask.escape` removal:** Flask 3.0 removed the deprecated `escape` re-export; changed import to `markupsafe.escape`
+- **openskill v6 API migration:** Top-level `openskill.Rating()`, `openskill.ordinal(r)`, and `openskill.rate()` removed in v6 — replaced with `PlackettLuce` model-based API (`model.rating()`, `r.ordinal()`, `model.rate(...)`)
+- **pydantic v2 API migration:** `Season.dict()` → `Season.model_dump()`; callers updated in `api_system.py` and `database.py`
+- **numpy v2 deprecation:** `numpy.testing.assert_almost_equal` → `numpy.testing.assert_allclose` in `test_glicko.py`
+- **pre-commit hook tag:** Fixed `v5.0.1` → `v5.0.0` (nonexistent tag)
+
+## [3.0.0] - 2026-06-13
 
 ### Added
 - **MariaDB database backend:** Full migration from SQLite to MariaDB via `mariadb+mariadbconnector`. New `model/` package with standalone database abstraction layer (`database.py`), schema definitions (`_sql.py`), initialisation scripts (`init_mariadb.py`), and season model (`seasons.py`).

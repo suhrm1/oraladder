@@ -6,7 +6,6 @@ import hashlib
 
 from flask import request, abort, Flask, Response, current_app, session
 
-
 # ---------------------------------------------------------------------------
 # Application factory
 # ---------------------------------------------------------------------------

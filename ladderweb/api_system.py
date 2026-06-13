@@ -356,7 +356,7 @@ def rotate_current_2m_season(db: LadderDatabase, mod: Optional[str] = None):
             new_current_season.end = datetime.date(year=new_end_year, month=new_end_month, day=new_end_day)
             new_current_season.active = True
 
-            old_season_dict = old_current_season.dict()
+            old_season_dict = old_current_season.model_dump()
             db.update_row_condition(
                 table="season",
                 values=list(old_season_dict.values()),
@@ -364,7 +364,7 @@ def rotate_current_2m_season(db: LadderDatabase, mod: Optional[str] = None):
                 condition=f"`mod`='{mod_id}' AND id='2m'",
             )
 
-            db.batch_insert(table="season", batch=[new_current_season.dict()])
+            db.batch_insert(table="season", batch=[new_current_season.model_dump()])
 
             update_season_ratings(db, season=old_current_season)
             update_season_ranking(db, season=old_current_season)

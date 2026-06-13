@@ -66,7 +66,7 @@ class Season(BaseModel):
             duration=self.duration,
         )
 
-    def dict(self, *args, **kwargs):
-        dictionary = super().dict()
+    def model_dump(self, *args, **kwargs):
+        dictionary = super().model_dump(*args, **kwargs)
         dictionary["active"] = 1 if self.active else 0
         return dictionary

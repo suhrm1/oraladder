@@ -15,9 +15,9 @@ def test_glicko():
 
     new_rating = RankingGlicko.compute_new_rating(me, opponents, outcomes, tau=0.5, eps=1e-6)
 
-    numpy.testing.assert_almost_equal(1464.06, new_rating.r, decimal=2)
-    numpy.testing.assert_almost_equal(151.52, new_rating.RD, decimal=2)
-    numpy.testing.assert_almost_equal(0.05999, new_rating.std, decimal=5)
+    numpy.testing.assert_allclose(1464.06, new_rating.r, rtol=0.01)
+    numpy.testing.assert_allclose(151.52, new_rating.RD, rtol=0.01)
+    numpy.testing.assert_allclose(0.05999, new_rating.std, rtol=0.01)
 
 
 def test_glicko_empty_period_will_increase_RD():

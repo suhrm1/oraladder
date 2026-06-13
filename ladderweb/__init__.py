@@ -22,8 +22,8 @@ from logging import Logger
 from typing import Tuple, Union, Optional
 from concurrent.futures import ThreadPoolExecutor
 
+from markupsafe import escape
 from flask import (
-    escape,
     jsonify,
     render_template,
     request,
@@ -487,30 +487,36 @@ def latest_games_js():
         p0_banned = match["p0_banned"] == "True"
         p1_banned = match["p1_banned"] == "True"
         game = dict(
-            replay=dict(
-                hash=match["hash"],
-                url=url_for("replay", replay_hash=match["hash"]) + _args_url(),
-                supports_analysis=mods[cur_mod].get("supports_analysis", False),
-            )
-            if not (p0_banned or p1_banned)
-            else None,
+            replay=(
+                dict(
+                    hash=match["hash"],
+                    url=url_for("replay", replay_hash=match["hash"]) + _args_url(),
+                    supports_analysis=mods[cur_mod].get("supports_analysis", False),
+                )
+                if not (p0_banned or p1_banned)
+                else None
+            ),
             date=match["end_time"],
             duration=match["duration"],
             map=_stripped_map_name(match["map_title"]),
-            p0=dict(
-                name=escape(match["p0_name"]),
-                url=url_for("player", profile_id=match["profile_id0"]) + _args_url(),
-                diff=match["diff0"],
-            )
-            if not p0_banned
-            else None,
-            p1=dict(
-                name=escape(match["p1_name"]),
-                url=url_for("player", profile_id=match["profile_id1"]) + _args_url(),
-                diff=match["diff1"],
-            )
-            if not p1_banned
-            else None,
+            p0=(
+                dict(
+                    name=escape(match["p0_name"]),
+                    url=url_for("player", profile_id=match["profile_id0"]) + _args_url(),
+                    diff=match["diff0"],
+                )
+                if not p0_banned
+                else None
+            ),
+            p1=(
+                dict(
+                    name=escape(match["p1_name"]),
+                    url=url_for("player", profile_id=match["profile_id1"]) + _args_url(),
+                    diff=match["diff1"],
+                )
+                if not p1_banned
+                else None
+            ),
         )
         # use a dictionary instead of list to filter out potential duplicate entries (due to games being recorded into
         # multiple seasons)

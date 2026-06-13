@@ -202,7 +202,7 @@ class LadderDatabase:
                 if season_id in existing_seasons[mod].keys():
                     self.exec(f"DELETE FROM season WHERE `mod`='{mod}' AND id='{season_id}'")
                     self.logger.debug(f"Deleted {mod}.{season_id} from database")
-                self.batch_insert("season", batch=[season.dict()])
+                self.batch_insert("season", batch=[season.model_dump()])
                 self.logger.debug(f"Inserted {season} into database")
 
     def get_seasons(self) -> Dict[str, Dict[str, Season]]:
