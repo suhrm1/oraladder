@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LadderCtl - OpenRA Server Manager</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0e0e0e; color: #e0e0e0; min-height: 100vh; }
+        .header { background: #1a1a2e; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #e94560; position: sticky; top: 0; z-index: 100; }
+        .header h1 { color: #e94560; font-size: 1.4rem; letter-spacing: 0.5px; }
+        .header .subtitle { color: #888; font-size: 0.85rem; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px 24px; }
+        .flash { padding: 10px 16px; border-radius: 4px; margin-bottom: 16px; font-size: 0.9rem; }
+        .flash.info { background: #1a3a4a; border-left: 4px solid #3498db; color: #b8e0f0; }
+        .flash.error { background: #3a1a2a; border-left: 4px solid #e94560; color: #f0b8c0; }
+        .stats { display: flex; gap: 16px; margin-bottom: 24px; }
+        .stat-card { background: #1a1a2e; border-radius: 8px; padding: 16px 24px; flex: 1; text-align: center; }
+        .stat-card .value { font-size: 2.2rem; font-weight: 700; color: #e94560; }
+        .stat-card .label { font-size: 0.85rem; color: #888; margin-top: 4px; }
+
+        .card { background: #1a1a2e; border-radius: 8px; margin-bottom: 24px; overflow: hidden; }
+        .card-title { background: #16213e; padding: 12px 16px; font-weight: 600; font-size: 1rem; color: #e94560; border-bottom: 1px solid #2a2a4a; cursor: pointer; user-select: none; }
+        .card-title:hover { opacity: 0.9; }
+        .card-title .collapse-indicator { float: right; color: #666; font-size: 0.8rem; font-weight: 400; }
+        .card-body { padding: 16px; }
+
+        .form-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+        .form-group { display: flex; flex-direction: column; gap: 4px; }
+        .form-group label { font-size: 0.8rem; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; }
+        .form-group input, .form-group select { padding: 8px 12px; background: #16213e; border: 1px solid #2a2a4a; border-radius: 4px; color: #e0e0e0; font-size: 0.9rem; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #e94560; }
+        .btn { padding: 8px 16px; border: none; border-radius: 4px; font-size: 0.9rem; cursor: pointer; transition: opacity 0.2s; text-decoration: none; display: inline-block; }
+        .btn:hover { opacity: 0.85; }
+        .btn-primary { background: #e94560; color: #fff; }
+        .btn-success { background: #27ae60; color: #fff; }
+        .btn-warning { background: #f39c12; color: #fff; }
+        .btn-danger { background: #c0392b; color: #fff; }
+        .btn-sm { padding: 4px 10px; font-size: 0.8rem; }
+        .btn-ghost { background: transparent; border: 1px solid #2a2a4a; color: #ccc; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #2a2a4a; }
+        th { color: #888; font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        tr:hover { background: #16213e; }
+        .status-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; }
+        .status-running { background: #27ae60; color: #fff; }
+        .status-exited, .status-paused { background: #c0392b; color: #fff; }
+        .status-created { background: #3498db; color: #fff; }
+
+        .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+        .empty { text-align: center; padding: 40px; color: #666; font-style: italic; }
+
+        .auto-refresh { font-size: 0.8rem; color: #666; margin-left: 12px; }
+        .auto-refresh input[type="checkbox"] { margin-right: 4px; vertical-align: middle; }
+
+        .activity-log { font-family: "SF Mono", "Fira Code", "Consolas", monospace; font-size: 0.78rem; max-height: 400px; overflow-y: auto; }
+        .activity-log .entry { padding: 6px 12px; border-bottom: 1px solid #2a2a4a; display: flex; gap: 10px; }
+        .activity-log .entry:hover { background: #16213e; }
+        .activity-log .time { color: #666; flex-shrink: 0; width: 5em; }
+        .activity-log .action { color: #e94560; font-weight: 600; flex-shrink: 0; }
+        .activity-log .detail { color: #999; white-space: pre-wrap; word-break: break-all; min-width: 0; }
+        .activity-log .status-success { border-left: 3px solid #27ae60; }
+        .activity-log .status-error { border-left: 3px solid #c0392b; }
+        .activity-log .status-info { border-left: 3px solid #3498db; }
+        .activity-log .status-running { border-left: 3px solid #f39c12; }
+
+        textarea.code { width: 100%; font-family: "SF Mono", "Fira Code", "Consolas", monospace; font-size: 0.82rem; background: #0e0e0e; border: 1px solid #2a2a4a; border-radius: 4px; color: #e0e0e0; padding: 8px; resize: vertical; }
+        textarea.code:focus { outline: none; border-color: #e94560; }
+
+        .mod-tabs { display: flex; gap: 0; margin-bottom: 12px; }
+        .mod-tabs button { padding: 6px 16px; background: #16213e; border: 1px solid #2a2a4a; color: #888; cursor: pointer; font-size: 0.85rem; }
+        .mod-tabs button:first-child { border-radius: 4px 0 0 4px; }
+        .mod-tabs button:last-child { border-radius: 0 4px 4px 0; }
+        .mod-tabs button.active { background: #e94560; color: #fff; border-color: #e94560; }
+
+        .config-preset-bar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+        .config-preset-bar select { padding: 6px 10px; background: #16213e; border: 1px solid #2a2a4a; border-radius: 4px; color: #e0e0e0; font-size: 0.85rem; min-width: 200px; }
+        .config-group { margin-bottom: 14px; }
+        .config-group label { font-size: 0.8rem; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 4px; }
+        .config-group textarea { min-height: 80px; }
+
+        .task-row { padding: 8px 12px; border-bottom: 1px solid #2a2a4a; font-size: 0.85rem; }
+        .task-row:hover { background: #16213e; }
+        .task-row.status-pending { border-left: 3px solid #888; }
+        .task-row.status-running { border-left: 3px solid #f39c12; }
+        .task-row.status-success { border-left: 3px solid #27ae60; }
+        .task-row.status-error   { border-left: 3px solid #c0392b; }
+        .task-header { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+        .task-header .time { color: #666; flex-shrink: 0; width: 5em; }
+        .task-action { color: #e94560; font-weight: 600; }
+        .task-detail { color: #ccc; }
+        .task-status-badge { font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; }
+        .task-status-badge.status-pending { background: #888; color: #fff; }
+        .task-status-badge.status-running { background: #f39c12; color: #fff; }
+        .task-status-badge.status-success { background: #27ae60; color: #fff; }
+        .task-status-badge.status-error   { background: #c0392b; color: #fff; }
+        .task-logs { font-family: "SF Mono", "Fira Code", "Consolas", monospace; font-size: 0.75rem; color: #888; margin-top: 4px; padding: 4px 8px; background: #0e0e0e; border-radius: 3px; max-height: 120px; overflow-y: auto; white-space: pre-wrap; }
+        .task-error { color: #e94560; font-size: 0.8rem; margin-top: 4px; }
+
+        #scroll-top { position: fixed; bottom: 24px; right: 24px; width: 40px; height: 40px; border-radius: 50%; background: #e94560; color: #fff; border: none; font-size: 1.2rem; cursor: pointer; display: none; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.4); z-index: 200; }
+        #scroll-top:hover { opacity: 0.85; }
+        #pool-maps-list { max-height: 480px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+<div class="header">
+    <div>
+        <h1><a href="{{ url_for('ladderctl.index') }}" style="color:inherit;text-decoration:none">LadderCtl</a></h1>
+        <div class="subtitle">OpenRA Game Server Manager</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+        <label class="auto-refresh">
+            <input type="checkbox" id="autorefresh" checked> Auto-refresh (15s)
+        </label>
+    </div>
+</div>
+
+<div class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="flash {{ category }}">{{ message }}</div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="stats">
+        <div class="stat-card">
+            <div class="value">{{ stats.total }}</div>
+            <div class="label">Total Servers</div>
+        </div>
+        <div class="stat-card">
+            <div class="value">{{ stats.running }}</div>
+            <div class="label">Running</div>
+        </div>
+        <div class="stat-card">
+            <div class="value">{{ stats.total - stats.running }}</div>
+            <div class="label">Stopped</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Start New Server(s)</div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('ladderctl.start_server') }}" class="form-row" id="start-form">
+                <div class="form-group">
+                    <label>Mod</label>
+                    <select name="mod">
+                        <option value="ra">Red Alert (ra)</option>
+                        <option value="cnc">Tiberian Dawn (cnc)</option>
+                        <option value="d2k">Dune 2000 (d2k)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Count</label>
+                    <input type="number" name="count" value="1" min="1" max="20">
+                </div>
+                <div class="form-group">
+                    <label>Release</label>
+                    <select name="release">
+                        {% for r in releases %}
+                        <option value="{{ r.tag }}" {% if loop.first %}selected{% endif %}>
+                            {{ r.tag }}{% if r.prerelease %} (pre-release){% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Base Port</label>
+                    <input type="number" name="base_port" value="10300">
+                </div>
+                <!-- hidden config fields — populated from textareas on submit -->
+                <input type="hidden" name="config_banned_profiles" id="h_cfg_banned">
+                <input type="hidden" name="config_mappool_ra" id="h_cfg_mappool_ra">
+                <input type="hidden" name="config_mappool_cnc" id="h_cfg_mappool_cnc">
+                <input type="hidden" name="config_motd.ra.txt" id="h_cfg_motd_ra">
+                <input type="hidden" name="config_motd.cnc.txt" id="h_cfg_motd_cnc">
+                <input type="hidden" name="config_preset_name" id="h_cfg_preset_name">
+                <div>
+                    <button type="submit" class="btn btn-primary" onclick="syncConfig()">Start</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card" id="advanced-card">
+        <div class="card-title">Advanced Options</div>
+        <div class="card-body" style="display:none">
+            <form method="POST" action="{{ url_for('ladderctl.start_server') }}" id="advanced-form">
+                <div class="form-row" style="margin-bottom:12px">
+                    <div class="form-group" style="flex:1.5">
+                        <label>Container Name Prefix</label>
+                        <input type="text" name="container_name_prefix" value="ladder_{mod}_"
+                               placeholder="ladder_{mod}_" form="start-form">
+                    </div>
+                    <div class="form-group" style="flex:2">
+                        <label>Server Name Template</label>
+                        <input type="text" name="server_name_template"
+                               value="|oraladder.net| Competitive 1v1 Ladder Server {number}" placeholder="...{number}"
+                               form="start-form">
+                    </div>
+                </div>
+                <div class="form-row" style="margin-bottom:12px">
+                    <div class="form-group">
+                        <label>Require Authentication</label>
+                        <select name="require_auth" form="start-form">
+                            <option value="True" selected>True</option>
+                            <option value="False">False</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Enable Singleplayer</label>
+                        <select name="enable_singleplayer" form="start-form">
+                            <option value="False" selected>False</option>
+                            <option value="True">True</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Record Replays</label>
+                        <select name="record_replays" form="start-form">
+                            <option value="True" selected>True</option>
+                            <option value="False">False</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row" style="margin-bottom:12px">
+                    <div class="form-group">
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;text-transform:none;letter-spacing:0">
+                            <input type="checkbox" name="force_rebuild" form="start-form">
+                            Force rebuild Docker image
+                        </label>
+                        <span style="font-size:0.75rem;color:#666">Removes existing image and rebuilds from scratch.</span>
+                    </div>
+                    <div class="form-group">
+                        <label>Server Connectivity</label>
+                        <select name="connectivity" form="start-form">
+                            <option value="public" selected>Public (0.0.0.0)</option>
+                            <option value="local">Local (127.0.0.1 only)</option>
+                        </select>
+                        <span style="font-size:0.75rem;color:#666">Restrict to loopback for local-only access.</span>
+                    </div>
+                </div>
+                <div class="form-row" style="margin-bottom:12px">
+                    <div class="form-group" style="flex:2">
+                        <label>Replay Base Folder (host path)</label>
+                        <input type="text" name="replay_basedir" value="" placeholder="e.g. /home/openra/ladder/replays"
+                               form="start-form">
+                        <span style="font-size:0.75rem;color:#666">Subdirectory <code>replays/{mod}/srv_{number}/{release}/</code> is auto-appended. Leave empty to use <code>{basedir}/replays</code>.</span>
+                    </div>
+                </div>
+                <div class="form-row" style="margin-bottom:12px">
+                    <div class="form-group" style="flex:2">
+                        <label>Map Pool</label>
+                        <select id="start-pool-select" form="start-form" onchange="onStartPoolChange()">
+                            <option value="">— No pool (default) —</option>
+                        </select>
+                        <span style="font-size:0.75rem;color:#666">Filtered by the mod and release selected above.</span>
+                    </div>
+                </div>
+                <div class="config-preset-bar" style="margin-bottom:0">
+                    <label style="font-size:0.8rem;color:#aaa;text-transform:uppercase;letter-spacing:0.5px">Config
+                        Preset</label>
+                    <select id="start-preset-select">
+                        <option value="">— Select preset —</option>
+                        {% for p in presets %}
+                        <option value="{{ p.name }}">{{ p.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <button class="btn btn-sm btn-ghost" type="button" onclick="loadStartPreset()">Load</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Config Presets</div>
+        <div class="card-body" style="display:none">
+            <div class="config-preset-bar">
+                <select id="preset-select">
+                    <option value="">— Load preset —</option>
+                    {% for p in presets %}
+                    <option value="{{ p.name }}">{{ p.name }}</option>
+                    {% endfor %}
+                </select>
+                <button class="btn btn-sm btn-ghost" id="preset-load" onclick="loadPreset()">Load</button>
+                <button class="btn btn-sm btn-success" onclick="savePreset()">Save As</button>
+                <button class="btn btn-sm btn-danger" onclick="deletePreset()">Delete</button>
+            </div>
+
+            <div class="mod-tabs">
+                <button class="active" data-mod="ra" onclick="switchMod('ra')">Red Alert (ra)</button>
+                <button data-mod="cnc" onclick="switchMod('cnc')">Tiberian Dawn (cnc)</button>
+            </div>
+
+            <div class="config-group">
+                <label for="cfg_banned">banned_profiles</label>
+                <textarea class="code" id="cfg_banned" name="config_banned_profiles" rows="6">{{ defaults.get('banned_profiles', '') }}</textarea>
+            </div>
+
+
+            <div class="config-group config-mod" data-mod="ra">
+                <label for="cfg_motd_ra">motd (RA)</label>
+                <textarea class="code" id="cfg_motd_ra" name="config_motd.ra.txt" rows="4">{{ defaults.get('motd.ra.txt', '') }}</textarea>
+            </div>
+            <div class="config-group config-mod" data-mod="cnc" style="display:none">
+                <label for="cfg_motd_cnc">motd (CnC)</label>
+                <textarea class="code" id="cfg_motd_cnc" name="config_motd.cnc.txt" rows="4">{{ defaults.get('motd.cnc.txt', '') }}</textarea>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Map Pools</div>
+        <div class="card-body" style="display:none">
+            <div class="form-row" style="margin-bottom:12px">
+                <div class="form-group" style="flex:1">
+                    <label>Pool Name</label>
+                    <input type="text" id="pool-name-input" placeholder="e.g. Ladder 1v1" style="width:100%">
+                </div>
+                <div class="form-group">
+                    <label>Mod</label>
+                    <select id="pool-mod-select">
+                        <option value="ra">Red Alert (ra)</option>
+                        <option value="cnc">Tiberian Dawn (cnc)</option>
+                        <option value="d2k">Dune 2000 (d2k)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Release</label>
+                    <select id="pool-release-select">
+                        {% for r in releases %}
+                        <option value="{{ r.tag }}" {% if loop.first %}selected{% endif %}>{{ r.tag }}{% if r.prerelease
+                            %} (pre-release){% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div style="display:flex;gap:6px;align-items:flex-end">
+                    <button class="btn btn-sm btn-success" onclick="createPool()">Create</button>
+                </div>
+            </div>
+
+            <div class="form-row" style="margin-bottom:12px">
+                <div class="form-group" style="flex:2">
+                    <label>Select Pool</label>
+                    <select id="pool-select" onchange="onPoolSelect()" style="width:100%">
+                        <option value="">— Select pool —</option>
+                        {% for p in map_pools %}
+                        <option value="{{ p.name }}" data-mod="{{ p.mod }}" data-release="{{ p.release }}">{{ p.name }}
+                            ({{ p.mod }}{% if p.release %}, {{ p.release }}{% endif %})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div style="display:flex;gap:6px;align-items:flex-end">
+                    <button class="btn btn-sm btn-ghost" onclick="refreshPoolList()">Refresh</button>
+                    <button class="btn btn-sm btn-danger" onclick="deletePool()">Delete</button>
+                </div>
+            </div>
+
+            <div id="pool-maps-section" style="display:none">
+                <hr style="border-color:#2a2a4a;margin:12px 0">
+
+                <div class="form-row" style="margin-bottom:12px">
+                    <div class="form-group" style="flex:3">
+                        <label>Add Map UUID</label>
+                        <input type="text" id="map-uuid-input"
+                               placeholder="e.g. 6c08c69a2157628fbe594aa4117e084f5487431f" style="width:100%">
+                    </div>
+                    <div style="display:flex;gap:6px;align-items:flex-end">
+                        <button class="btn btn-sm btn-primary" onclick="addMapToPool()">Add Map</button>
+                    </div>
+                </div>
+
+                <div id="map-info-preview"
+                     style="display:none;padding:8px;background:#16213e;border-radius:4px;margin-bottom:12px;font-size:0.85rem"></div>
+
+                <div class="form-row" style="margin-bottom:12px">
+                    <div class="form-group" style="flex:1">
+                        <label>Maps in this pool</label>
+                        <div id="pool-maps-list">
+                            <div class="empty">No maps in this pool.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display:flex;gap:8px;">
+                    <button class="btn btn-sm btn-ghost" onclick="applyPoolToConfig()">Apply to mappool config</button>
+                    <span style="font-size:0.75rem;color:#666;align-self:center">Copies UUIDs into the start-form mappool field.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Tasks
+            <span style="font-weight:400;font-size:0.8rem;color:#888;margin-left:8px;" id="task-count"></span>
+        </div>
+        <div class="card-body" style="padding:0;">
+            <div id="task-list">
+                {% for t in tasks %}
+                <div class="task-row status-{{ t.status }}" data-tid="{{ t.id }}">
+                    <div class="task-header">
+                        <span class="time">{{ t.created }}</span>
+                        <span class="task-action">{{ t.action }}</span>
+                        <span class="task-detail">{{ t.detail }}</span>
+                        <span class="task-status-badge status-{{ t.status }}">{{ t.status }}</span>
+                    </div>
+                    {% if t.logs %}
+                    <div class="task-logs">{{ '\n'.join(t.logs[-10:]) }}</div>
+                    {% endif %}
+                    {% if t.error %}
+                    <div class="task-error">{{ t.error }}</div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="empty">No background tasks.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title" id="servers">Servers</div>
+        <div class="card-body" style="padding:0;" id="servers-body">
+            {% if servers %}
+            <table>
+                <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Mod</th>
+                    <th>Status</th>
+                    <th>Ports</th>
+                    <th>Image</th>
+                    <th>Config</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for srv in servers %}
+                <tr>
+                    <td><strong>{{ srv.name }}</strong></td>
+                    <td>{{ srv.mod }}</td>
+                    <td><span class="status-badge status-{{ srv.status }}">{{ srv.status }}</span></td>
+                    <td>{{ srv.ports | join(', ') }}</td>
+                    <td style="font-size:0.8rem;color:#888;">{{ srv.image }}</td>
+                    <td style="font-size:0.8rem;">
+                        {% set labels = srv.get('labels', {}) %}
+                        {% if labels.get('ladderctl.preset') %}
+                        <div><strong>Preset:</strong> {{ labels['ladderctl.preset'] }}</div>
+                        {% endif %}
+                        {% if labels.get('ladderctl.release') %}
+                        <div><strong>Release:</strong> {{ labels['ladderctl.release'] }}</div>
+                        {% endif %}
+                        {% if labels.get('ladderctl.connectivity') %}
+                        <div><strong>Connectivity:</strong> {{ labels['ladderctl.connectivity'] }}</div>
+                        {% endif %}
+                        {% if not labels %}
+                        <span style="color:#666">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="actions">
+                        {% if srv.status == 'running' %}
+                        <form method="POST" action="{{ url_for('ladderctl.stop_container', container_name=srv.name) }}"
+                              style="display:inline;">
+                            <button class="btn btn-warning btn-sm">Stop</button>
+                        </form>
+                        <form method="POST"
+                              action="{{ url_for('ladderctl.restart_container', container_name=srv.name) }}"
+                              style="display:inline;">
+                            <button class="btn btn-sm btn-ghost">Restart</button>
+                        </form>
+                        {% else %}
+                        <form method="POST" action="{{ url_for('ladderctl.start_container', container_name=srv.name) }}"
+                              style="display:inline;">
+                            <button class="btn btn-success btn-sm">Start</button>
+                        </form>
+                        {% endif %}
+                        <a href="{{ url_for('ladderctl.container_logs', container_name=srv.name) }}"
+                           class="btn btn-sm btn-ghost">Logs</a>
+                        <form method="POST"
+                              action="{{ url_for('ladderctl.remove_container', container_name=srv.name) }}"
+                              style="display:inline;" onsubmit="return confirm('Remove {{ srv.name }}?');">
+                            <button class="btn btn-danger btn-sm">Remove</button>
+                        </form>
+                    </td>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty">No game server containers found. Start one above.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Activity Log</div>
+        <div class="card-body" style="padding:0;">
+            <div class="activity-log" id="activity-log">
+                {% for entry in activity %}
+                <div class="entry status-{{ entry.status }}">
+                    <span class="time">{{ entry.time }}</span>
+                    <span class="action">{{ entry.action }}</span>
+                    <span class="detail">{{ entry.detail }}</span>
+                </div>
+                {% else %}
+                <div class="empty">No activity yet.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<button id="scroll-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Scroll to top">&#8593;</button>
+
+<script>
+    const autoRefresh = document.getElementById('autorefresh');
+    let timer = null;
+    let _poolsCache = null;
+
+    function renderActivity(entries) {
+      const log = document.getElementById('activity-log');
+      if (!entries.length) {
+        log.innerHTML = '<div class="entry"><span class="detail" style="color:#666;font-style:italic;">No activity yet.</span></div>';
+        return;
+      }
+      log.innerHTML = entries.map(e =>
+        `<div class="entry status-${e.status}">` +
+          `<span class="time">${e.time}</span>` +
+          `<span class="action">${e.action}</span>` +
+          `<span class="detail">${esc(e.detail)}</span>` +
+        `</div>`
+      ).join('');
+    }
+
+    function esc(s) {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    function startAutoRefresh() {
+      if (timer) clearInterval(timer);
+      if (autoRefresh.checked) {
+        timer = setInterval(() => {
+          Promise.all([
+            fetch('/api/servers').then(r => r.json()),
+            fetch('/api/activity').then(r => r.json()),
+            fetch('/api/tasks').then(r => r.json()),
+          ]).then(([srv, act, tasks]) => {
+            document.querySelectorAll('.stat-card .value')[0].textContent = srv.stats.total;
+            document.querySelectorAll('.stat-card .value')[1].textContent = srv.stats.running;
+            document.querySelectorAll('.stat-card .value')[2].textContent = srv.stats.total - srv.stats.running;
+            renderActivity(act);
+            renderServerTable(srv.servers);
+            renderTasks(tasks);
+          }).catch(() => {});
+        }, 15000);
+      }
+    }
+
+    autoRefresh.addEventListener('change', () => {
+      if (autoRefresh.checked) startAutoRefresh();
+      else if (timer) clearInterval(timer);
+    });
+
+    startAutoRefresh();
+
+    // ---- Scroll-to-top button ----
+    window.addEventListener('scroll', () => {
+      document.getElementById('scroll-top').style.display = window.scrollY > 300 ? 'flex' : 'none';
+    });
+
+    // ---- Config mod tabs ----
+    function switchMod(mod) {
+      document.querySelectorAll('.mod-tabs button').forEach(b => {
+        b.classList.toggle('active', b.dataset.mod === mod);
+      });
+      document.querySelectorAll('.config-mod').forEach(el => {
+        el.style.display = el.dataset.mod === mod ? '' : 'none';
+      });
+    }
+
+    // ---- Config sync to start form ----
+    function syncConfig() {
+      document.getElementById('h_cfg_banned').value = document.getElementById('cfg_banned').value;
+      document.getElementById('h_cfg_motd_ra').value = document.getElementById('cfg_motd_ra').value;
+      document.getElementById('h_cfg_motd_cnc').value = document.getElementById('cfg_motd_cnc').value;
+      const sel = document.getElementById('start-preset-select');
+      document.getElementById('h_cfg_preset_name').value = sel ? sel.value : '';
+    }
+
+    // ---- Config persistence in localStorage ----
+    function saveConfigToStorage() {
+      const cfg = currentConfig();
+      try { localStorage.setItem('ladderctl_config', JSON.stringify(cfg)); } catch (e) {}
+    }
+
+    function restoreConfigFromStorage() {
+      try {
+        const raw = localStorage.getItem('ladderctl_config');
+        if (raw) {
+          const cfg = JSON.parse(raw);
+          if (Object.values(cfg).some(v => v)) {
+            applyConfig(cfg);
+          }
+        }
+      } catch (e) {}
+    }
+
+    // Auto-save config when textareas change
+   document.addEventListener('DOMContentLoaded', function() {
+     restoreConfigFromStorage();
+     document.querySelectorAll('textarea.code').forEach(el => {
+       el.addEventListener('input', saveConfigToStorage);
+     });
+     initCollapsibleCards();
+
+      const modSel = document.querySelector('select[name="mod"]');
+      const relSel = document.querySelector('select[name="release"]');
+      if (modSel) modSel.addEventListener('change', updateStartPoolSelector);
+      if (relSel) relSel.addEventListener('change', updateStartPoolSelector);
+      refreshPoolsCache().then(updateStartPoolSelector);
+   });
+
+    // ---- Collapsible cards ----
+    function initCollapsibleCards() {
+      document.querySelectorAll('.card-title').forEach(title => {
+        const body = title.nextElementSibling;
+        if (!body || !body.classList.contains('card-body')) return;
+        const ind = document.createElement('span');
+        ind.className = 'collapse-indicator';
+        ind.textContent = '▾';
+        title.appendChild(ind);
+        title.addEventListener('click', () => {
+          const collapsed = body.style.display === 'none';
+          body.style.display = collapsed ? '' : 'none';
+          ind.textContent = collapsed ? '▾' : '▸';
+        });
+      });
+    }
+
+    // ---- Presets ----
+    function currentConfig() {
+      return {
+        banned_profiles: document.getElementById('cfg_banned').value,
+        'motd.ra.txt': document.getElementById('cfg_motd_ra').value,
+        'motd.cnc.txt': document.getElementById('cfg_motd_cnc').value,
+      };
+    }
+
+    function applyConfig(cfg) {
+      document.getElementById('cfg_banned').value = cfg.banned_profiles || '';
+      document.getElementById('cfg_motd_ra').value = cfg['motd.ra.txt'] || '';
+      document.getElementById('cfg_motd_cnc').value = cfg['motd.cnc.txt'] || '';
+      saveConfigToStorage();
+    }
+
+    function loadPreset() {
+      const sel = document.getElementById('preset-select');
+      const name = sel.value;
+      if (!name) return;
+      fetch('/api/server-config/presets')
+        .then(r => r.json())
+        .then(presets => {
+          const p = presets.find(x => x.name === name);
+          if (p) applyConfig(p);
+        });
+    }
+
+    function loadStartPreset() {
+      const sel = document.getElementById('start-preset-select');
+      const name = sel.value;
+      if (!name) return;
+      fetch('/api/server-config/presets')
+        .then(r => r.json())
+        .then(presets => {
+          const p = presets.find(x => x.name === name);
+          if (p) {
+            applyConfig(p);
+            // Also sync to the main preset dropdown
+            const mainSel = document.getElementById('preset-select');
+            if (mainSel) mainSel.value = name;
+          }
+        });
+    }
+
+    function savePreset() {
+      const name = prompt('Preset name:');
+      if (!name) return;
+      const body = { name, ...currentConfig() };
+      fetch('/api/server-config/presets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }).then(r => {
+        if (r.ok) location.reload();
+      });
+    }
+
+    function deletePreset() {
+      const sel = document.getElementById('preset-select');
+      const name = sel.value;
+      if (!name || !confirm('Delete preset "' + name + '"?')) return;
+      fetch('/api/server-config/presets/' + encodeURIComponent(name), {
+        method: 'DELETE',
+      }).then(r => {
+        if (r.ok) location.reload();
+      });
+    }
+
+    // ---- Server table rendering ----
+    function renderServerTable(servers) {
+      const container = document.getElementById('servers-body');
+      if (!container) return;
+      if (!servers || !servers.length) {
+        container.innerHTML = '<div class="empty">No game server containers found. Start one above.</div>';
+        return;
+      }
+      const rows = servers.map(s => {
+        const statusClass = 'status-' + s.status;
+        const ports = (s.ports || []).join(', ');
+        const stopBtn = s.status === 'running'
+          ? `<form method="POST" action="/${s.name}/stop" style="display:inline;"><button class="btn btn-warning btn-sm">Stop</button></form>`
+            + `<form method="POST" action="/${s.name}/restart" style="display:inline;"><button class="btn btn-sm btn-ghost">Restart</button></form>`
+          : `<form method="POST" action="/${s.name}/start" style="display:inline;"><button class="btn btn-success btn-sm">Start</button></form>`;
+        return `<tr>
+          <td><strong>${esc(s.name)}</strong></td>
+          <td>${esc(s.mod)}</td>
+          <td><span class="status-badge ${statusClass}">${esc(s.status)}</span></td>
+          <td>${esc(ports)}</td>
+          <td style="font-size:0.8rem;color:#888;">${esc(s.image)}</td>
+          <td style="font-size:0.8rem;">
+            ${renderConfigLabels(s.labels)}
+          </td>
+          <td class="actions">
+            ${stopBtn}
+            <a href="/${s.name}/logs" class="btn btn-sm btn-ghost">Logs</a>
+            <form method="POST" action="/${s.name}/remove" style="display:inline;" onsubmit="return confirm('Remove ${esc(s.name)}?');">
+              <button class="btn btn-danger btn-sm">Remove</button>
+            </form>
+          </td>
+        </tr>`;
+      }).join('');
+      container.innerHTML = `<table><thead><tr>
+        <th>Name</th><th>Mod</th><th>Status</th><th>Ports</th><th>Image</th><th>Config</th><th>Actions</th>
+      </tr></thead><tbody>${rows}</tbody></table>`;
+    }
+
+    function renderConfigLabels(labels) {
+      if (!labels) return '<span style="color:#666">—</span>';
+      const parts = [];
+      if (labels['ladderctl.preset']) parts.push('<strong>Preset:</strong> ' + esc(labels['ladderctl.preset']));
+      if (labels['ladderctl.release']) parts.push('<strong>Release:</strong> ' + esc(labels['ladderctl.release']));
+      if (labels['ladderctl.connectivity']) parts.push('<strong>Connectivity:</strong> ' + esc(labels['ladderctl.connectivity']));
+      return parts.length ? parts.join('<br>') : '<span style="color:#666">—</span>';
+    }
+
+    // ---- Tasks rendering ----
+    function renderTasks(tasks) {
+      const container = document.getElementById('task-list');
+      const count = document.getElementById('task-count');
+      if (!container) return;
+      const running = tasks.filter(t => t.status === 'running' || t.status === 'pending');
+      count.textContent = running.length > 0 ? `(${running.length} active)` : '';
+      container.innerHTML = tasks.length === 0
+        ? '<div class="empty">No background tasks.</div>'
+        : tasks.map(t => {
+            const logs = (t.logs || []).slice(-10).join('\n');
+            const err = t.error || '';
+            return `<div class="task-row status-${t.status}" data-tid="${t.id}">
+              <div class="task-header">
+                <span class="time">${t.created}</span>
+                <span class="task-action">${t.action}</span>
+                <span class="task-detail">${t.detail}</span>
+                <span class="task-status-badge status-${t.status}">${t.status}</span>
+              </div>
+              ${logs ? '<div class="task-logs">' + logs + '</div>' : ''}
+              ${err ? '<div class="task-error">' + err + '</div>' : ''}
+            </div>`;
+          }).join('');
+    }
+
+    // ---- Tasks periodic poll + page refresh on completion ----
+    let runningTaskIds = new Set();
+    setInterval(() => {
+      fetch('/api/tasks').then(r => r.json()).then(tasks => {
+        const wasRunning = runningTaskIds;
+        runningTaskIds = new Set(tasks.filter(t => t.status === 'running' || t.status === 'pending').map(t => t.id));
+        const completed = tasks.filter(t => wasRunning.has(t.id) && (t.status === 'success' || t.status === 'error'));
+        if (completed.length > 0) {
+          location.reload();
+          return;
+        }
+        renderTasks(tasks);
+      }).catch(() => {});
+    }, 3000);
+
+    // ---- Map Pools ----
+    function escHtml(s) {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    function createPool() {
+      const name = document.getElementById('pool-name-input').value.trim();
+      const mod = document.getElementById('pool-mod-select').value;
+      const release = document.getElementById('pool-release-select').value;
+      if (!name) { alert('Enter a pool name.'); return; }
+      fetch('/api/map-pools', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, mod, release, maps: [] }),
+      }).then(r => {
+        if (r.ok) { refreshPoolList(); document.getElementById('pool-name-input').value = ''; }
+        else r.json().then(d => alert(d.error || 'Failed'));
+      });
+    }
+
+    function deletePool() {
+      const sel = document.getElementById('pool-select');
+      const name = sel.value;
+      if (!name) return;
+      if (!confirm('Delete pool "' + name + '"?')) return;
+      fetch('/api/map-pools/' + encodeURIComponent(name), { method: 'DELETE' })
+        .then(r => { if (r.ok) refreshPoolList(); });
+    }
+
+    function refreshPoolList() {
+      fetch('/api/map-pools')
+        .then(r => r.json())
+        .then(pools => {
+          const sel = document.getElementById('pool-select');
+          const current = sel.value;
+          sel.innerHTML = '<option value="">— Select pool —</option>' +
+            pools.map(p =>
+              `<option value="${escHtml(p.name)}" data-mod="${escHtml(p.mod)}" data-release="${escHtml(p.release || '')}">${escHtml(p.name)} (${escHtml(p.mod)}${p.release ? ', ' + escHtml(p.release) : ''})</option>`
+            ).join('');
+          if (current && [...sel.options].some(o => o.value === current)) sel.value = current;
+          document.getElementById('pool-maps-section').style.display = 'none';
+        });
+    }
+
+    function onPoolSelect() {
+      const sel = document.getElementById('pool-select');
+      const name = sel.value;
+      const section = document.getElementById('pool-maps-section');
+      if (!name) { section.style.display = 'none'; return; }
+      section.style.display = '';
+      loadPoolMaps();
+    }
+
+    function loadPoolMaps() {
+      const sel = document.getElementById('pool-select');
+      const name = sel.value;
+      if (!name) return;
+      fetch('/api/map-pools')
+        .then(r => r.json())
+        .then(pools => {
+          const pool = pools.find(p => p.name === name);
+          if (!pool) return;
+          const container = document.getElementById('pool-maps-list');
+          const maps = pool.maps || [];
+          if (!maps.length) {
+            container.innerHTML = '<div class="empty">No maps in this pool.</div>';
+            return;
+          }
+          container.innerHTML = '<div style="padding:8px;text-align:center;color:#888">Loading map info...</div>';
+          fetch('/api/map-info', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uuids: maps }),
+          })
+            .then(r => r.json())
+            .then(infoMap => {
+              let html = '<div style="overflow-x:auto"><table><thead><tr>' +
+                '<th>ID</th><th>Title</th><th>Author</th><th>Uploader</th><th>P</th><th>Size</th><th>Tileset</th><th>Upload</th><th>Mod</th><th>Release</th><th></th>' +
+                '</tr></thead><tbody>';
+              maps.forEach(uuid => {
+                const info = infoMap[uuid];
+                if (info && info.title) {
+                  const w = info.width || '?';
+                  const h = info.height || '?';
+                  const date = info.posted ? info.posted.substring(0, 10) : '-';
+                  html += '<tr>' +
+                    '<td style="font-size:0.78rem">' + info.id + '</td>' +
+                    '<td><strong>' + escHtml(info.title) + '</strong></td>' +
+                    '<td style="font-size:0.8rem">' + escHtml(info.author) + '</td>' +
+                    '<td style="font-size:0.8rem">' + escHtml(info.uploader) + '</td>' +
+                    '<td style="text-align:center">' + info.players + '</td>' +
+                    '<td style="font-size:0.8rem">' + w + 'x' + h + '</td>' +
+                    '<td style="font-size:0.8rem">' + escHtml(info.tileset) + '</td>' +
+                    '<td style="font-size:0.78rem">' + date + '</td>' +
+                    '<td style="font-size:0.8rem">' + escHtml(info.mod) + '</td>' +
+                    '<td style="font-size:0.78rem">' + escHtml(info.parser) + '</td>' +
+                    '<td class="actions"><button class="btn btn-sm btn-danger" onclick="removeMapFromPool(\'' + escHtml(uuid) + '\')">Remove</button></td>' +
+                    '</tr>';
+                } else {
+                  html += '<tr>' +
+                    '<td colspan="10" style="font-family:monospace;font-size:0.78rem;color:#666">' + escHtml(uuid) + '</td>' +
+                    '<td class="actions"><button class="btn btn-sm btn-danger" onclick="removeMapFromPool(\'' + escHtml(uuid) + '\')">Remove</button></td>' +
+                    '</tr>';
+                }
+              });
+              html += '</tbody></table></div>';
+              container.innerHTML = html;
+            })
+            .catch(() => {
+              // Fallback: show simple UUID list if batch API fails
+              container.innerHTML = '<table><thead><tr><th>UUID</th><th>Actions</th></tr></thead><tbody>' +
+                maps.map(uuid =>
+                  '<tr>' +
+                    '<td style="font-family:monospace;font-size:0.78rem">' + escHtml(uuid) + '</td>' +
+                    '<td class="actions">' +
+                      '<button class="btn btn-sm btn-danger" onclick="removeMapFromPool(\'' + escHtml(uuid) + '\')">Remove</button>' +
+                    '</td>' +
+                  '</tr>'
+                ).join('') + '</tbody></table>';
+            });
+        });
+    }
+
+    function addMapToPool() {
+      const sel = document.getElementById('pool-select');
+      const name = sel.value;
+      if (!name) { alert('Select a pool first.'); return; }
+      const opt = sel.options[sel.selectedIndex];
+      const mod = opt ? opt.dataset.mod : '';
+      const release = opt ? opt.dataset.release : '';
+      const uuid = document.getElementById('map-uuid-input').value.trim().toLowerCase();
+      if (!uuid) { alert('Enter a map UUID.'); return; }
+      if (!/^[a-f0-9]{40}$/.test(uuid)) { alert('Invalid UUID format (expected 40 hex chars).'); return; }
+
+      // Show loading state
+      const preview = document.getElementById('map-info-preview');
+      preview.style.display = '';
+      preview.innerHTML = 'Fetching map info...';
+
+      const infoUrl = '/api/map-info/' + uuid + '?mod=' + encodeURIComponent(mod) + '&release=' + encodeURIComponent(release);
+      fetch(infoUrl)
+        .then(r => {
+          if (r.ok) return r.json();
+          preview.innerHTML = '<span style="color:#f39c12">Warning: Could not verify map with OpenRA Resource Center. Adding anyway.</span>';
+          return null;
+        })
+        .then(info => {
+          if (info && info.title) {
+            let html = '<div><strong>' + escHtml(info.title) + '</strong> by ' + escHtml(info.author) +
+              ' &middot; ' + info.players + ' players' +
+              (info.mod ? ' &middot; ' + info.mod.toUpperCase() : '') +
+              '</div>';
+
+            const warnings = [];
+            if (info.match_mod === false) {
+              warnings.push('Mod mismatch: map is for "' + info.mod + '" but pool expects "' + mod + '"');
+            }
+            if (info.match_release === false) {
+              warnings.push('Release mismatch: map parsed by "' + info.parser + '" but pool expects "' + release + '"');
+            } else if (info.match_release === true && info.parser) {
+              html += '<div style="color:#27ae60;font-size:0.8rem;margin-top:4px">Release matches (' + escHtml(info.parser) + ')</div>';
+            }
+
+            if (warnings.length) {
+              html += '<div style="color:#f39c12;font-size:0.8rem;margin-top:4px">' + warnings.join('<br>') + '</div>';
+            }
+            preview.innerHTML = html;
+          }
+          // Add to pool
+          return fetch('/api/map-pools/' + encodeURIComponent(name) + '/maps', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uuid }),
+          });
+        })
+        .then(r => {
+          if (r && r.ok) {
+            document.getElementById('map-uuid-input').value = '';
+            loadPoolMaps();
+          }
+        })
+        .catch(() => {
+          preview.innerHTML = '<span style="color:#e94560">Error adding map. Try again.</span>';
+        });
+    }
+
+    function removeMapFromPool(uuid) {
+      const sel = document.getElementById('pool-select');
+      const name = sel.value;
+      if (!name || !uuid) return;
+      fetch('/api/map-pools/' + encodeURIComponent(name) + '/maps/' + encodeURIComponent(uuid), { method: 'DELETE' })
+        .then(r => { if (r.ok) loadPoolMaps(); });
+    }
+
+    // ---- Start-form pool selector (Advanced Options) ----
+    function refreshPoolsCache() {
+      return fetch('/api/map-pools')
+        .then(r => r.json())
+        .then(pools => { _poolsCache = pools; return pools; });
+    }
+
+    function updateStartPoolSelector() {
+      const modSelect = document.querySelector('select[name="mod"]');
+      const releaseSelect = document.querySelector('select[name="release"]');
+      const mod = modSelect ? modSelect.value : '';
+      const release = releaseSelect ? releaseSelect.value : '';
+      const poolSel = document.getElementById('start-pool-select');
+      const currentVal = poolSel.value;
+
+      function render(pools) {
+        const filtered = pools.filter(p => p.mod === mod && p.release === release);
+        poolSel.innerHTML = '<option value="">— No pool (default) —</option>' +
+          filtered.map(p =>
+            `<option value="${escHtml(p.name)}" data-mod="${escHtml(p.mod)}">${escHtml(p.name)}</option>`
+          ).join('');
+        if (filtered.some(p => p.name === currentVal)) {
+          poolSel.value = currentVal;
+        } else {
+          poolSel.value = '';
+          document.getElementById('h_cfg_mappool_ra').value = '';
+          document.getElementById('h_cfg_mappool_cnc').value = '';
+        }
+      }
+
+      if (_poolsCache) {
+        render(_poolsCache);
+      } else {
+        refreshPoolsCache().then(render);
+      }
+    }
+
+    function onStartPoolChange() {
+      const poolSel = document.getElementById('start-pool-select');
+      const name = poolSel.value;
+      const opt = poolSel.options[poolSel.selectedIndex];
+      const mod = opt ? opt.dataset.mod : '';
+
+      if (!name || !mod) {
+        document.getElementById('h_cfg_mappool_ra').value = '';
+        document.getElementById('h_cfg_mappool_cnc').value = '';
+        return;
+      }
+
+      const pool = _poolsCache ? _poolsCache.find(p => p.name === name) : null;
+      if (pool && pool.maps && pool.maps.length) {
+        document.getElementById('h_cfg_mappool_ra').value = '';
+        document.getElementById('h_cfg_mappool_cnc').value = '';
+        const hidden = document.getElementById('h_cfg_mappool_' + mod);
+        if (hidden) hidden.value = pool.maps.join('\n') + '\n';
+      } else {
+        refreshPoolsCache().then(pools => {
+          const p = pools.find(p2 => p2.name === name);
+          if (!p || !p.maps || !p.maps.length) return;
+          document.getElementById('h_cfg_mappool_ra').value = '';
+          document.getElementById('h_cfg_mappool_cnc').value = '';
+          const hidden = document.getElementById('h_cfg_mappool_' + mod);
+          if (hidden) hidden.value = p.maps.join('\n') + '\n';
+        });
+      }
+    }
+
+    function applyPoolToConfig() {
+      const sel = document.getElementById('pool-select');
+      const name = sel.value;
+      if (!name) return;
+
+      const startPoolSel = document.getElementById('start-pool-select');
+      const startOpt = Array.from(startPoolSel.options).find(o => o.value === name);
+      if (!startOpt) {
+        alert('Switch the mod and release to match this pool first.');
+        return;
+      }
+      startPoolSel.value = name;
+      onStartPoolChange();
+    }
+</script>
+</body>
+</html>

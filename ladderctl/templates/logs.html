@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LadderCtl - {{ container_name }} logs</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "SF Mono", "Fira Code", "Consolas", monospace; background: #0e0e0e; color: #e0e0e0; min-height: 100vh; }
+    .header { background: #1a1a2e; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #e94560; }
+    .header h1 { color: #e94560; font-size: 1.1rem; }
+    .header a { color: #888; text-decoration: none; font-size: 0.9rem; }
+    .header a:hover { color: #e94560; }
+    pre { padding: 20px; font-size: 0.8rem; line-height: 1.5; overflow-x: auto; white-space: pre-wrap; word-break: break-all; color: #b0b0b0; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>{{ container_name }} logs</h1>
+    <a href="{{ url_for('ladderctl.index', _anchor='servers') }}">&larr; Back to dashboard</a>
+  </div>
+  <pre>{{ logs }}</pre>
+</body>
+</html>

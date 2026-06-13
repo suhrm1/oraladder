@@ -1,0 +1,16 @@
+services:
+  ladderctl:
+    build: .
+    container_name: ladderctl
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./ladder_server:/app/ladder_server:ro
+    environment:
+      - LADDERCTL_USERNAME=${LADDERCTL_USERNAME:-admin}
+      - LADDERCTL_PASSWORD=${LADDERCTL_PASSWORD:-changeme}
+      - LADDERCTL_BASEDIR=${LADDERCTL_BASEDIR:-}
+      - LADDERCTL_BASE_PORT=${LADDERCTL_BASE_PORT:-10300}
+      - SECRET_KEY=${SECRET_KEY:-}
