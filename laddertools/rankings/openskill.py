@@ -16,30 +16,32 @@
 #
 import copy
 
-import openskill
+from openskill.models import PlackettLuce
+from openskill.models.weng_lin.plackett_luce import PlackettLuceRating
 
 from laddertools.rankings.abc import RankingBase
 from laddertools.model import OutCome
+
+_OPENSKILL_MODEL = PlackettLuce()
 
 
 class _RatingOpenskill:
 
     MINIMAL_INCREASE: int = 5
-    internal: openskill.Rating
+    internal: PlackettLuceRating
 
-    def __init__(self, internal: openskill.Rating = None):
-        self.internal = openskill.Rating() if internal is None else internal
+    def __init__(self, internal: PlackettLuceRating = None):
+        self.internal = _OPENSKILL_MODEL.rating() if internal is None else internal
 
     @property
     def value(self):
-        val = openskill.ordinal(self.internal)
+        val = self.internal.ordinal()
         if val < 0:
             val = 0
         return val
 
     @property
     def display_value(self):
-        # XXX: needs more accuracy?
         return round(self.value * 100)
 
     def minimal_increase(self):
@@ -49,7 +51,7 @@ class _RatingOpenskill:
 
 class RankingOpenskill(RankingBase):
     def record_result(self, winner_rating: _RatingOpenskill, loser_rating: _RatingOpenskill):
-        [[r0], [r1]] = openskill.rate([[winner_rating.internal], [loser_rating.internal]])
+        [[r0], [r1]] = _OPENSKILL_MODEL.rate([[winner_rating.internal], [loser_rating.internal]])
         r0 = _RatingOpenskill(r0)
         r1 = _RatingOpenskill(r1)
         return r0, r1
@@ -81,7 +83,6 @@ class RankingOpenskill(RankingBase):
             if r0.display_value > p0.rating.display_value + p0.rating.MINIMAL_INCREASE:
                 p0.update_rating(r0)
             else:
-                # We update the rating with a minimally increased version
                 rating_clone = copy.deepcopy(p0.rating)
                 rating_clone.minimal_increase()
                 p0.update_rating(rating_clone)

@@ -6,17 +6,25 @@ setup(
     packages=find_packages(),
     zip_safe=False,
     include_package_data=True,
+    python_requires=">=3.10",
     install_requires=[
         "filelock",
         "flask",
+        "mariadb",
         "numpy",
         "pyyaml",
         "openskill",
         "sqlalchemy",
         "trueskill",
-        "pytest",
         "pydantic",
     ],
+    extras_require={
+        "dev": [
+            "pytest",
+            "black",
+            "pre-commit",
+        ],
+    },
     entry_points=dict(
         console_scripts=[
             "ora-ladder = laddertools.ladder:run",
