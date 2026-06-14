@@ -143,9 +143,9 @@ def load_mappool_from_file(source_file: str):
         with open(source_file) as pool_file:
             mp = pool_file.read()
             if "," in mp:
-                mp = ",".join([m.replace("\n", "") for m in mp.split(",")])
+                mp = ",".join([m.replace("\n", "") for m in mp.strip().split(",")])
             elif "\n" in mp:
-                mp = mp.replace("\n", ",")
+                mp = ",".join([m for m in mp.strip().split("\n")])
         print(mp)
     except FileNotFoundError:
         logging.warning(f"No map pool file found. Continuing with environment variable $MapPool")
