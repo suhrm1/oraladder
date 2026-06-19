@@ -1,3 +1,9 @@
+"""Generate an overlay image (PNG + SVG) stamped with the season tag.
+
+The overlay is a semi-transparent 90×90 badge with "Ladder" and the
+season string, composited onto each map's minimap during patching.
+"""
+
 import os
 from PIL import Image, ImageDraw, ImageFont
 
@@ -5,6 +11,13 @@ OVERLAY_SIZE = 90
 
 
 def _find_font():
+    """Walk known font paths for a bold monospace TTF.
+
+    Raises
+    ------
+    RuntimeError
+        If no suitable font is found on the system.
+    """
     candidates = [
         "/usr/share/fonts/noto/NotoSansMono-Bold.ttf",
         "/usr/share/fonts/TTF/DejaVuSansMono-Bold.ttf",
@@ -17,10 +30,28 @@ def _find_font():
     for c in candidates:
         if os.path.exists(c):
             return c
-    raise RuntimeError("No suitable font found. Install a bold monospace font " "(e.g. fonts-noto, fonts-dejavu-core).")
+    raise RuntimeError("No suitable font found. Install a bold monospace font (e.g. fonts-noto, fonts-dejavu-core).")
 
 
 def generate_overlay(season, verbose=False):
+    """Create overlay PNG and SVG files in the project root.
+
+    The PNG is a 90×90 RGBA image with outlined white text reading
+    "Ladder" (top) and the season tag (bottom).  The SVG equivalent
+    is written alongside it.
+
+    Parameters
+    ----------
+    season : str
+        Season identifier, e.g. ``"2026.1"``.
+    verbose : bool
+        Print output paths.
+
+    Returns
+    -------
+    tuple of (str, str)
+        ``(svg_path, png_path)`` for the generated files.
+    """
     font_path = _find_font()
     title_font = ImageFont.truetype(font_path, 18)
     season_font = ImageFont.truetype(font_path, 14)
@@ -29,6 +60,7 @@ def generate_overlay(season, verbose=False):
     draw = ImageDraw.Draw(img)
 
     def draw_text(text, font, y_pos):
+        """Draw *text* centred on the x-axis with a black outline."""
         bbox = draw.textbbox((0, 0), text, font=font)
         tw = bbox[2] - bbox[0]
         x = (OVERLAY_SIZE - tw) // 2
@@ -55,6 +87,7 @@ def generate_overlay(season, verbose=False):
 
 
 def _generate_svg(svg_path, season):
+    """Write an equivalent SVG version of the overlay."""
     svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="90" height="90" viewBox="0 0 90 90">
   <defs>
     <style>

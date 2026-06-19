@@ -1,3 +1,10 @@
+"""CLI entry point for the ``laddermaps2`` command.
+
+Parses arguments (with optional YAML config file override), then
+runs the full pipeline: balance patch download → map resolution →
+overlay generation → patching → optional ``--check-yaml``.
+"""
+
 import argparse
 import os
 import subprocess
@@ -10,6 +17,15 @@ from laddermaps2.patcher import process_maps
 
 
 def _check_yaml_maps(ra_executable, output_dir):
+    """Run OpenRA's ``--check-yaml`` on every ``.oramap`` in *output_dir*.
+
+    Parameters
+    ----------
+    ra_executable : str
+        Path to the OpenRA Red Alert executable.
+    output_dir : str
+        Directory containing patched ``.oramap`` files.
+    """
     output_dir = os.path.abspath(output_dir)
     for fname in sorted(os.listdir(output_dir)):
         if not fname.endswith(".oramap"):
@@ -29,6 +45,11 @@ def _check_yaml_maps(ra_executable, output_dir):
 
 
 def parse_args(argv=None):
+    """Build and return the argument parser namespace.
+
+    Accepts an optional *argv* list for testability (defaults to
+    ``sys.argv[1:]``).
+    """
     parser = argparse.ArgumentParser(description="Build ladder map packs for OpenRA competitive ladder.")
     parser.add_argument("--season", help='Season tag, e.g. "2026.1"')
     parser.add_argument(
@@ -94,6 +115,18 @@ def parse_args(argv=None):
 
 
 def load_config(config_path):
+    """Load a YAML config file.
+
+    Parameters
+    ----------
+    config_path : str
+        Path to the YAML file.
+
+    Returns
+    -------
+    dict
+        Parsed configuration.
+    """
     import yaml
 
     with open(config_path) as f:
@@ -102,6 +135,11 @@ def load_config(config_path):
 
 
 def merge_config(args, cfg):
+    """Merge YAML config values into the parsed CLI args namespace.
+
+    CLI-provided values take precedence over config file values.
+    The ``maps`` section is expanded into ``map_ids`` / ``input_dir``.
+    """
     d = vars(args)
     for k, v in cfg.items():
         yk = k.replace("-", "_")
@@ -117,6 +155,7 @@ def merge_config(args, cfg):
 
 
 def main():
+    """Entry point: parse, merge config, validate, run pipeline, exit."""
     args = parse_args()
     if args.config:
         cfg = load_config(args.config)

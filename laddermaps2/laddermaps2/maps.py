@@ -1,3 +1,5 @@
+"""Resolve source maps from either resource.openra.net IDs or a local directory."""
+
 import os
 import shutil
 from urllib.request import urlopen
@@ -6,6 +8,31 @@ from laddermaps2.config import MAP_URL
 
 
 def resolve_maps(map_ids_str, input_dir, cache_dir, verbose=False):
+    """Return a list of paths to ``.oramap`` files ready for patching.
+
+    Parameters
+    ----------
+    map_ids_str : str or None
+        Comma-separated numeric map IDs from resource.openra.net.
+        Maps are downloaded into *cache_dir* unless already cached.
+    input_dir : str or None
+        Directory containing ``.oramap`` source files.  Ignored when
+        *map_ids_str* is also given (both sources are merged).
+    cache_dir : str
+        Where to store downloaded maps (created if needed).
+    verbose : bool
+        Print progress messages.
+
+    Returns
+    -------
+    list of str
+        Absolute paths to ``.oramap`` files.
+
+    Raises
+    ------
+    RuntimeError
+        When no maps could be resolved from either source.
+    """
     source_maps = []
 
     if map_ids_str:

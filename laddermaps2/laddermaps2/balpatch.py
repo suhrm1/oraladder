@@ -1,3 +1,5 @@
+"""Download and extract balance patch archives from GitHub."""
+
 import io
 import os
 import shutil
@@ -8,6 +10,23 @@ from laddermaps2.config import BALPATCH_URL, SRC_PREFIX
 
 
 def download_balance_patch(tag, dest_dir, verbose=False):
+    """Download the ora-balance-iteration archive and extract its ``src/``.
+
+    Parameters
+    ----------
+    tag : str
+        Git tag to fetch (e.g. ``"5.0"``).
+    dest_dir : str
+        Local directory to extract into.  If it already exists the
+        download is skipped (cached).
+    verbose : bool
+        Print progress messages.
+
+    Returns
+    -------
+    str
+        Path to *dest_dir* containing the extracted ``.yaml`` rules.
+    """
     if os.path.isdir(dest_dir):
         if verbose:
             print(f"  Using cached balance patch at {dest_dir}")
@@ -42,6 +61,17 @@ def download_balance_patch(tag, dest_dir, verbose=False):
 
 
 def read_extension_yaml(balpatch_dir):
+    """Read ``_extension.yaml`` metadata from the patch directory.
+
+    The extension YAML declares which files belong under which
+    ``map.yaml`` category header (Rules, Weapons, …).
+
+    Returns
+    -------
+    dict
+        Mapping of category name → comma-separated filenames, or empty
+        dict if the file doesn't exist.
+    """
     import yaml
 
     ext_path = os.path.join(balpatch_dir, "_extension.yaml")

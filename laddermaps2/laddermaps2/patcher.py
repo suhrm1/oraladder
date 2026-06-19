@@ -1,3 +1,11 @@
+"""Core map patching pipeline.
+
+Takes source ``.oramap`` files, strips old mod YAML, injects balance
+patch rules and extension files, updates ``map.yaml`` metadata,
+composites a "Ladder" overlay onto the minimap, and re-packs into
+the output directory.
+"""
+
 import os
 import re
 import shutil
@@ -8,6 +16,7 @@ from PIL import Image
 
 from laddermaps2.balpatch import read_extension_yaml
 
+#: Recognised mod YAML files that are stripped from source maps.
 KNOWN_MOD_YAMLS = {
     "bi-balance-rules.yaml",
     "bi-briefing-rules.yaml",
@@ -36,30 +45,12 @@ KNOWN_MOD_YAMLS = {
     "briefing-rules.yaml",
     "lobby-rules.yaml",
     "ladder-briefing.yaml",
-    "hlpr_deco.yaml",
-    "hlpr_rul.yaml",
-    "hlpr_seq.yaml",
-    "hlpr_sequences.yaml",
-    "pinkdefaults_rul.yaml",
-    "pinkrivers_rul.yaml",
-    "pinkrivers_seq.yaml",
-    "pinkrocks_rul.yaml",
-    "pinkrocks_seq.yaml",
-    "pinktrees_rul.yaml",
-    "pinktrees_seq.yaml",
-    "pinktoxicpal_rul.yaml",
-    "pinktoxicpal_seq.yaml",
 }
 
-KNOWN_NON_YAML_MODS = {
-    "gpssactiveicon.shp",
-    "pip-skull.shp",
-    "tox_sign.shp",
-    "satellite_initialized_delay2s.aud",
-    "satellite_ready.aud",
-    "satellite_terminated.aud",
-}
+#: Non-YAML mod assets that are stripped from source maps.
+KNOWN_NON_YAML_MODS = {}
 
+#: ``map.yaml`` category headers that reference external files.
 CATEGORY_LINES = [
     "Rules:",
     "Weapons:",
@@ -69,10 +60,13 @@ CATEGORY_LINES = [
     "FluentMessages:",
 ]
 
+#: Categories injected into every map's ``Categories:`` line.
 EXTRA_CATEGORIES = ["Ladder", "1v1", "Conquest"]
 
+#: Files that must never be copied into the output (e.g. source-only).
 FORBIDDEN_FILES = {"bi-briefing-rules.yaml", "bi-lobby-rules.yaml"}
 
+#: Map from extension filename to the ``map.yaml`` category it belongs under.
 EXTENSIONS_CATEGORIES = {
     "ERCC21andBCC11-rules.yaml": "Rules",
     "ladder-briefing-rules.yaml": "Rules",
@@ -81,6 +75,7 @@ EXTENSIONS_CATEGORIES = {
 
 
 def _is_mod_file(name):
+    """Return True if *name* is a known mod file that should be stripped."""
     base = os.path.basename(name)
     if base in KNOWN_MOD_YAMLS:
         return True
@@ -100,6 +95,7 @@ def _is_mod_file(name):
 
 
 def _sanitize_title(title):
+    """Remove existing ``[Ladder]`` and ``[BI-…]`` tags from a map title."""
     title = title.strip()
     title = re.sub(r"\s*\[Ladder\]\s*", "", title, flags=re.IGNORECASE)
     title = re.sub(r"\s*\[BI-[^\]]*\]\s*", "", title)
@@ -108,23 +104,27 @@ def _sanitize_title(title):
 
 
 def _to_filename(title, season):
+    """Convert a map title into a slug-style filename with season suffix."""
     name = re.sub(r"[^a-zA-Z0-9]+", "_", title).strip("_").lower()
     return f"{name}_ladder_{season}.oramap"
 
 
 def _read_lines(work_dir):
+    """Read ``map.yaml`` as a list of lines."""
     path = os.path.join(work_dir, "map.yaml")
     with open(path, encoding="utf-8") as f:
         return f.readlines()
 
 
 def _write_lines(work_dir, lines):
+    """Write a list of lines back to ``map.yaml``."""
     path = os.path.join(work_dir, "map.yaml")
     with open(path, "w", encoding="utf-8") as f:
         f.writelines(lines)
 
 
 def _find_header_line(lines, prefix):
+    """Return ``(index, line)`` of the first line starting with *prefix*."""
     for i, line in enumerate(lines):
         if line.strip().startswith(prefix):
             return i, line
@@ -132,12 +132,14 @@ def _find_header_line(lines, prefix):
 
 
 def _remove_file_refs(value, removed_files):
+    """Drop filenames in *removed_files* from a comma-separated list."""
     parts = [p.strip() for p in value.split(",")]
     kept = [p for p in parts if p not in removed_files]
     return ", ".join(kept)
 
 
 def _add_file_refs(value, files_to_add):
+    """Append filenames not already present in a comma-separated list."""
     parts = [p.strip() for p in value.split(",")] if value else []
     for f in files_to_add:
         if f not in parts:
@@ -146,12 +148,50 @@ def _add_file_refs(value, files_to_add):
 
 
 def _patch_briefing_version(content, bi_tag):
+    """Replace ``BI X.Y`` version references in briefing content."""
     return re.sub(r"\bBI\s+[\d.]+\b", f"BI {bi_tag}", content)
 
 
 def process_maps(
     source_maps, balpatch_dir, season, bi_tag, overlay_png, output_dir, work_dir, extensions_dir=None, verbose=False
 ):
+    """Run the full patching pipeline on every source map.
+
+    For each source ``.oramap``:
+
+    1. Unpack into a temp directory.
+    2. Remove old mod YAML and assets (see ``_is_mod_file``).
+    3. Remove junk files (``.DS_Store``, etc.).
+    4. Edit ``map.yaml`` — strip removed file refs, set title to
+       ``{sanitised} [Ladder]``, set categories.
+    5. Add balance patch files and register them in ``map.yaml``.
+    6. Add extension files (e.g. briefing), patching BI version in
+       ``ladder-briefing-rules.yaml``.
+    7. Composite the "Ladder" overlay onto ``map.png``.
+    8. Determine the output filename from the new title.
+    9. Re-zip and write to *output_dir*.
+
+    Parameters
+    ----------
+    source_maps : list of str
+        Paths to input ``.oramap`` files.
+    balpatch_dir : str
+        Directory with extracted balance patch files.
+    season : str
+        Season tag (e.g. ``"2026.1"``), used in filename + categories.
+    bi_tag : str
+        Balance iteration tag (e.g. ``"5.0"``).
+    overlay_png : str
+        Path to the overlay PNG to composite.
+    output_dir : str
+        Where to write the patched ``.oramap`` files.
+    work_dir : str
+        Temporary working directory for unpacking / re-packing.
+    extensions_dir : str or None
+        Optional directory with extra YAML files to inject.
+    verbose : bool
+        Print per-map progress messages.
+    """
     os.makedirs(work_dir, exist_ok=True)
     os.makedirs(output_dir, exist_ok=True)
     ext = read_extension_yaml(balpatch_dir)
