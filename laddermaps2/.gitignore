@@ -1,0 +1,26 @@
+# Generated overlay
+overlay.png
+overlay.svg
+
+# Downloaded balance patch cache
+.balpatch/
+
+# Downloaded map cache
+.mapcache/
+
+# Working directory for patching
+.work/
+
+# Output maps
+output/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini

@@ -1,0 +1,62 @@
+ref-bot:
+	Defaults:
+		Filename: ref-bot.shp
+	idle:
+		Offset: 2, 3
+		ZOffset: -1c511
+	damaged-idle:
+		Offset: 2, 3
+		ZOffset: -1c511
+		Start: 1
+	topsolid:
+		Filename: ref-top.shp
+		Offset: 2, 3
+		ZOffset: 0c912
+		Start: 0
+	damaged-topsolid:
+		Filename: ref-top.shp
+		Offset: 2, 3
+		ZOffset: 0c912
+		Start: 2
+	opaquetop:
+		Filename: ref-top.shp
+		Offset: 2, 3
+		ZOffset: 0c912
+		Start: 1
+	damaged-opaquetop:
+		Filename: ref-top.shp
+		Offset: 2, 3
+		ZOffset: 0c912
+		Start: 3
+	make:
+		Filename: ref-anim.shp
+		Offset: 5, -1
+		Length: *
+	dead:
+		Filename: procdead.shp
+		Tick: 800
+	bib:
+		Filename: bib2.tem
+		TilesetFilenames:
+			SNOW: bib2.sno
+			DESERT: bib2.des
+		Offset: 2, 8
+		ZOffset: -1c612
+		Length: *
+	icon:
+		Filename: procicon.shp
+
+harv:
+	Defaults:
+		Filename: harv.shp
+	dock:
+		Filename: harv-flipped_top.shp
+		Start: 96
+		Length: 8
+	dock-loop:
+		Filename: harv-flipped_top.shp
+		Start: 104
+		Length: 7
+	icon:
+		Filename: harvicon.shp
+		Start: 0

@@ -1,0 +1,22 @@
+# Ladder map pack configuration
+# Run: python -m laddermaps2 --config config.yaml
+
+season: "2026.1"
+bi_tag: "5.0"
+
+# Source maps: provide map IDs and/or a local directory
+#maps:
+#  ids: [44149, 25708, 43246]
+  # input_dir: ./source-maps
+
+# Output directory (default: ./output)
+output_dir: ./output
+
+# Path to OpenRA Red Alert executable for --check-yaml validation (optional)
+ra_executable: /home/markus/Downloads/OpenRA-Red-Alert-playtest-x86_64.AppImage
+
+# Optional overrides (defaults shown)
+# extensions_dir: ./extensions
+# balpatch_dir: ./.balpatch
+# cache_dir: ./.mapcache
+# work_dir: ./.work
