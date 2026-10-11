@@ -1,6 +1,7 @@
-FROM debian:11
 
-RUN apt-get update && apt-get install -y python3 python3-pip wget nano libicu67 && apt-get clean all \
+FROM debian:12
+
+RUN apt-get update && apt-get install -y python3 python3-pip wget nano libicu72 && apt-get clean all \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
 RUN useradd -m openra
@@ -34,10 +35,15 @@ COPY srvwrap_minimal.py .
 
 RUN chmod +x entrypoint.sh \
     && chmod +x server.sh \
-    && touch banned_profiles \
-    && chown -R openra: /home/openra/
+    && touch banned_profiles
 
 RUN mv /tmp/squashfs-root/* /home/openra/
+
+# Make sure everything inside /home/openra is owned by the unprivileged
+# "openra" user. This must run AFTER the mv: recent OpenRA AppImages extract
+# with owner-only (0700) directories, which the openra user cannot traverse
+# if they remain root-owned.
+RUN chown -R openra: /home/openra/
 
 # Apply patches to server settings
 RUN python3 -c "from srvwrap_minimal import patch; patch()"
