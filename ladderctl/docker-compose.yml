@@ -7,10 +7,14 @@ services:
       - "8001:8001"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./ladder_server:/app/ladder_server:ro
+      # Variable: $LADDERCTL_BASEDIR
+      # Must mount a local persistance folder to the same path on host and inside container
+      - /tmp/oraladder-ladderctl:/tmp/oraladder-ladderctl
     environment:
+      # HTTP BasicAuth credentials; NB: always run behind TLS webproxy
       - LADDERCTL_USERNAME=${LADDERCTL_USERNAME:-admin}
       - LADDERCTL_PASSWORD=${LADDERCTL_PASSWORD:-changeme}
-      - LADDERCTL_BASEDIR=${LADDERCTL_BASEDIR:-}
-      - LADDERCTL_BASE_PORT=${LADDERCTL_BASE_PORT:-10300}
-      - SECRET_KEY=${SECRET_KEY:-}
+      - SECRET_KEY=${SECRET_KEY:-mustdefineasecretkey}
+      - LADDERCTL_BASE_PORT=${LADDERCTL_BASE_PORT:-10300}}
+      # NB: base dir must be the same path on host and inside container
+      - LADDERCTL_BASEDIR=${LADDERCTL_BASEDIR:-/tmp/oraladder-ladderctl}

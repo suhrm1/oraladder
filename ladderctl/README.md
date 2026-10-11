@@ -41,9 +41,11 @@ docker compose restart
 
 The `docker-compose.yml` mounts `./ladder_server` read-only so Docker image builds from the host filesystem work without rebuilding the ladderctl container.
 
+The compose file also bind-mounts `LADDERCTL_BASEDIR` at the **same absolute path** inside the container and on the host (defaults to `/tmp/oraladder-ladderctl`). This is required because ladderctl talks to the host Docker daemon over the Docker socket: the daemon resolves bind-mount sources on the host, so the config files ladderctl writes (`banned_profiles`, `motd.txt`) must be visible at the identical path on the host. Without the shared mount, Docker auto-creates the missing source as a directory and the server container fails to start with `not a directory`.
+
 ### Production
 
-Set `LADDERCTL_BASEDIR` to a persistent host path for runtime artifacts (config files, replays, maps, `presets.json`).
+Set `LADDERCTL_BASEDIR` to a persistent host path for runtime artifacts (config files, replays, maps, `presets.json`). The compose file mounts this path into the container automatically, so no extra `volumes` entry is needed.
 
 ```yaml
 # docker-compose.yml override
@@ -51,9 +53,6 @@ services:
   ladderctl:
     environment:
       - LADDERCTL_BASEDIR=/var/lib/ladderctl
-    volumes:
-      - /var/lib/ladderctl:/var/lib/ladderctl
-      - /var/run/docker.sock:/var/run/docker.sock:ro
 ```
 
 Default credentials: `admin` / `LADDERCTL_PASSWORD` (logs a generated one-time password if unset).
