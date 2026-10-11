@@ -1,0 +1,8 @@
+OpenRA Competitive Ladder Server
+
+Games played on this server are recorded to be part of
+the OpenRA Ladder ranking system.
+
+Check out https://oraladder.net for current rankings,
+latest game replays, and information about the
+available map pool.

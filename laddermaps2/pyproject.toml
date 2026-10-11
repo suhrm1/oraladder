@@ -1,0 +1,17 @@
+[project]
+name = "laddermaps2"
+version = "1.0.0"
+description = "Ladder map pack builder for oraladder.net OpenRA ladder"
+requires-python = ">=3.10"
+dependencies = [
+    "PyYAML>=6.0",
+    "Pillow>=10.0",
+    "requests>=2.28",
+]
+
+[project.scripts]
+laddermaps2 = "laddermaps2.cli:main"
+upload-maps = "laddermaps2.upload_maps:main"
+
+[tool.setuptools.packages.find]
+include = ["laddermaps2*"]

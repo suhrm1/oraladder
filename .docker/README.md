@@ -2,7 +2,7 @@
 
 The entire architecture can be set up in containerized environment using Docker images.
 
-The following instructions only cover the Ladder and tournament website services. If you want to run an OpenRA game server with additional convenience features, check out the [game server docs](./ladder_server/README.md).
+The following instructions only cover the Ladder and tournament website services. If you want to run an OpenRA game server with additional convenience features, check out the [game server docs](../ladderctl/ladder_server/README.md).
 
 These instructions expect you to know the basics of Docker and the Docker CLI.
 

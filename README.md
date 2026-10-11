@@ -182,7 +182,7 @@ The following command-line tools are included:
 ## Game servers
 
 The game server instances are configured to record replays. A dedicated
-Dockerfile and utility scripts are available in [`.docker/ladder_server/`](.docker/ladder_server/README.md)
+Dockerfile and utility scripts are available in [`.docker/ladder_server/`](ladderctl/ladder_server/README.md)
 for running game servers with automatic map rotation and environment variable
 configuration.
 
@@ -194,7 +194,7 @@ For manual game server setup, `ora-srvwrap` handles:
 4. downloading maps from the map pool
 5. running the server on a configurable port
 
-See the [game server documentation](.docker/ladder_server/README.md) for
+See the [game server documentation](ladderctl/ladder_server/README.md) for
 details on running multiple instances with map rotation.
 
 

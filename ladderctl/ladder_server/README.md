@@ -1,12 +1,12 @@
 # OpenRA Ladder Game Server Dockerfile
 
-This [Dockerfile](./Dockerfile) extends the base image created by [rmoriz](https://github.com/rmoriz/openra-dockerfile), `rmoriz/openra` on [Docker Hub](https://hub.docker.com/r/rmoriz/openra/).
+This [Dockerfile](Dockerfile) extends the base image created by [rmoriz](https://github.com/rmoriz/openra-dockerfile), `rmoriz/openra` on [Docker Hub](https://hub.docker.com/r/rmoriz/openra/).
 
 Building this image updates operating system packages to current versions and adds a couple of utilities useful for running Ladder game servers:
 
-- OpenRA lobby settings get pinned to the default competitive multiplayer values (see `_overrides` dictionary in [`srvwrap_minimal.py`](./srvwrap_minimal.py)).
+- OpenRA lobby settings get pinned to the default competitive multiplayer values (see `_overrides` dictionary in [`srvwrap_minimal.py`](srvwrap_minimal.py)).
 - Banned OpenRA forum accounts are loaded from a file (which must contain one profile ID per line). The bans-file can be configured via the environment variable `BANS_FILE`. Default path is `/home/openra/banned_profiles`.
-- Custom game server launch script [`server.sh`](./server.sh) rotates the starting map as a random pick from the available map folder.
+- Custom game server launch script [`server.sh`](server.sh) rotates the starting map as a random pick from the available map folder.
 
 ## Usage
 
