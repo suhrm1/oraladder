@@ -29,12 +29,11 @@ from flask import (
     jsonify,
 )
 
-from .forfeit_games import (
-    get_player_forfeit_games,
-    get_forfeit_win_loss_stats,
-)
+from .forfeit_games import get_player_forfeit_games
 from .playoffs import get_playoff2, get_playoff4, PlayoffOutcome
 from .announcements import get_announcements
+from .standings import compute_standings
+from .strikes import get_player_strikes, get_strike_stats
 
 
 def _db_get():
@@ -62,6 +61,7 @@ def create_app():
     print("Database path: " + db_path)
     app.config.from_mapping(
         DATABASE=db_path,
+        STRIKE_LIMIT=3,
     )
     cfg_file = os.environ.get("RAGL_CONFIG", app.instance_path + "/ragl_config.py")
     app.config.from_pyfile(cfg_file)
@@ -79,22 +79,7 @@ cfg = app.config
 def scoreboards():
     db = _db_get()
 
-    cur = db.execute(
-        """
-        SELECT
-            COUNT(profile_id) as nb_profiles,
-            division
-        FROM players
-        WHERE status IS NULL
-        GROUP BY division
-        """
-    )
-
-    matchup_count = app.config["GAMES_PER_MATCH"]
-    max_matches = {row["division"]: (row["nb_profiles"] - 1) * matchup_count for row in cur}
-
-    cur = db.execute(
-        """
+    players = db.execute("""
         SELECT
             profile_id,
             profile_name,
@@ -104,46 +89,30 @@ def scoreboards():
             division,
             status
         FROM players
-        ORDER BY division, status, wins DESC
-        """
+        """).fetchall()
+    outcomes = db.execute("SELECT profile_id0, profile_id1 FROM outcomes").fetchall()
+    forfeit_games = db.execute("SELECT profile_id0, profile_id1 FROM forfeit_games").fetchall()
+    strike_counts = get_strike_stats(db)
+
+    scoreboards = compute_standings(
+        players,
+        outcomes,
+        forfeit_games,
+        strike_counts,
+        app.config["GAMES_PER_MATCH"],
+        app.config.get("STRIKE_LIMIT", 3),
     )
 
-    forfeit_games = get_forfeit_win_loss_stats(db)
-
-    scoreboards = {}
-    for profile_id, profile_name, avatar_url, wins, losses, division, status in cur:
-        rows = scoreboards.get(division, [])
-        forfeit_wins = forfeit_games[profile_id]["wins"]
-        forfeit_losses = forfeit_games[profile_id]["losses"]
-        nb_played = wins + forfeit_wins + losses + forfeit_losses
-        if status == "SF":
-            status = "⛔ Season Forfeit"
-        elif nb_played == max_matches[division]:
-            status = "✅ All matchups completed"
-        else:
-            status = ""  # TODO: handle late status
-
-        rows.append(
-            dict(
-                profile_id=profile_id,
-                name=profile_name,
-                avatar_url=avatar_url,
-                played=nb_played,
-                max_matches=max_matches[division],
-                wins=wins + forfeit_wins,
-                losses=losses + forfeit_losses,
-                winrate=(wins + forfeit_wins) / nb_played * 100 if nb_played else 0,
-                status=status or "",
-            )
-        )
-
-        # Take into account forfeit games when sorting the list
-        rows = sorted(rows, key=lambda row: (row["wins"], row["winrate"]), reverse=True)
-        # Set player rank based on sorted list
-        for i, r in enumerate(rows, 1):
-            r["row_id"] = "SF" if "Season Forfeit" in r["status"] else i
-
-        scoreboards[division] = rows
+    for rows in scoreboards.values():
+        for row in rows:
+            if row["disqualified"]:
+                row["status"] = f"⛔ Disqualified ({row['strikes']} strikes)"
+            elif row["status"] == "SF":
+                row["status"] = "⛔ Season Forfeit"
+            elif row["played"] == row["max_matches"]:
+                row["status"] = "✅ All matchups completed"
+            else:
+                row["status"] = ""  # TODO: handle late status
 
     return render_template(
         "scoreboards.html",
@@ -156,8 +125,7 @@ def scoreboards():
 
 
 def _get_games(db, outcomes_table, order="DESC"):
-    cur = db.execute(
-        f"""
+    cur = db.execute(f"""
         SELECT
             hash,
             end_time,
@@ -169,8 +137,7 @@ def _get_games(db, outcomes_table, order="DESC"):
         FROM {outcomes_table} o
         LEFT JOIN players p0 ON p0.profile_id = o.profile_id0
         LEFT JOIN players p1 ON p1.profile_id = o.profile_id1
-        ORDER BY o.end_time {order}"""
-    )
+        ORDER BY o.end_time {order}""")
     matches = cur.fetchall()
     cur.close()
 
@@ -367,8 +334,11 @@ def player(profile_id):
     records = _get_player_records(db, profile_id)
     records = records | get_player_forfeit_games(db, profile_id)
     opponents = _get_player_opponents(db, profile_id, player_info["division"])
+    strikes = get_player_strikes(db, profile_id)
 
     cfg = app.config
+    strike_limit = cfg.get("STRIKE_LIMIT", 3)
+    strike_count = len(strikes)
 
     # Complete opponent information with potential records
     matches = []
@@ -393,7 +363,9 @@ def player(profile_id):
 
     matchup_expected_done = int(matchup_count * group_stage_completion)
 
-    if player_info["status"] == "SF":
+    if strike_count >= strike_limit:
+        status = f"⛔ Disqualified ({strike_count} strikes)"
+    elif player_info["status"] == "SF":
         status = "⛔ Season Forfeit"
     elif matchup_count == matchup_done_count:
         status = "✅ All matchups completed"
@@ -409,6 +381,9 @@ def player(profile_id):
         profile_name=player_info["profile_name"],
         avatar_url=player_info["avatar_url"],
         status=status,
+        strikes=strikes,
+        strike_count=strike_count,
+        strike_limit=strike_limit,
         matchup_done_count=matchup_done_count,
         matchup_count=matchup_count,
         start_time=app.config["START_TIME"],

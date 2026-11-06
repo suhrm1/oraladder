@@ -9,7 +9,30 @@
 	<dt>Matchups completed:</dt><dd>{{ player.matchup_done_count }}/{{ player.matchup_count }}</dd>
 	<dt>Group stage period:</dt><dd>{{ player.start_time }} - {{ player.end_time }}</dd>
 	<dt>Status:</dt><dd>{{ player.status }}</dd>
+	<dt>Strikes:</dt><dd>{{ player.strike_count }}/{{ player.strike_limit }}</dd>
 </dl>
+
+<h2>Strikes</h2>
+{% if player.strikes %}
+<table>
+	<thead>
+		<tr>
+			<th>Date</th>
+			<th>Reason</th>
+		</tr>
+	</thead>
+	<tbody>
+		{%- for strike in player.strikes %}
+		<tr>
+			<td>{{ strike.date }}</td>
+			<td>{{ strike.reason or "" }}</td>
+		</tr>
+		{%- endfor %}
+	</tbody>
+</table>
+{% else %}
+<p>No strikes recorded.</p>
+{% endif %}
 
 <h2>Scores</h2>
 <table>

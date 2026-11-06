@@ -7,7 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- RAGL: player strikes configured via the season YAML (`Strikes`, `Strike_Limit`), stored in a new `strikes` table, and displayed on the scoreboard and player pages
+- RAGL: automatic disqualification (`SF`) after reaching the strike limit
+- RAGL: per-replay player ID overrides (`Replay_Overrides`) for replays whose OpenRA fingerprints resolve incorrectly or cannot be resolved
+- RAGL: strike history on player pages
+
 ### Changed
+- RAGL: standings now use points, direct head-to-head, fewer strikes, and recursive head-to-head countback, with higher-ranked opponents considered before lower-ranked opponents
+- RAGL: `SF` and disqualified players are removed from the ranking before sorting and displayed as unranked `SF` rows
+- RAGL: added `STRIKE_LIMIT` website configuration (default `3`)
+
 ### Deprecated
 ### Removed
 ### Fixed

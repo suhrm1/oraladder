@@ -18,6 +18,7 @@ PRIZE_POOL = "$35"
 DISCORD_URL = "https://discord.gg/AABNUESBFZ"
 DISCORD_NAME = "TDGL Discord"
 GAMES_PER_MATCH = 2
+STRIKE_LIMIT = 3
 GAME_SERVER_NAMING_PATTERN = "TDGL Official Server"
 PLAYOFF_SCHEMA_IMG = "tdgl_format_s03.png"
 

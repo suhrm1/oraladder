@@ -73,7 +73,59 @@ def _update_account_cache(accounts_db: dict, player: GamePlayerInfo):
     return True
 
 
-def _parse_replay(results, accounts_db, filename):
+def get_replay_override(overrides, filename, player, slot):
+    """Look up a per-replay profile ID override for a player.
+
+    ``overrides`` is a mapping of replay path/basename to a mapping of player
+    selectors (slot number, display name or fingerprint) to profile IDs.
+    """
+    if not overrides or filename is None:
+        return None
+
+    replay_override = overrides.get(filename)
+    if replay_override is None:
+        replay_override = overrides.get(op.abspath(filename))
+    if replay_override is None:
+        replay_override = overrides.get(op.basename(filename))
+    if not replay_override:
+        return None
+
+    outcome_selector = "winner" if slot == 0 else "loser"
+    selectors = (str(slot), f"player{slot}", outcome_selector, player.fingerprint, player.display_name)
+    for selector in selectors:
+        if selector in replay_override:
+            return replay_override[selector]
+
+    # Names in YAML are not case-sensitive from an administrator's point of view.
+    display_name = (player.display_name or "").casefold()
+    for selector, profile_id in replay_override.items():
+        if isinstance(selector, str) and selector.casefold() == display_name:
+            return profile_id
+    return None
+
+
+def get_player_account(accounts_db, player, overrides=None, filename=None, slot=None):
+    """Return the resolved account for a player, honoring per-replay overrides.
+
+    An override returns only the profile ID; name and avatar stay ``None`` so
+    callers can keep the canonical name from the season configuration.
+    """
+    override_profile_id = get_replay_override(overrides, filename, player, slot)
+    if override_profile_id is not None:
+        return (override_profile_id, None, None)
+    return accounts_db.get(player.fingerprint)
+
+
+def _resolve_player_account(accounts_db, player, overrides, filename, slot):
+    account = get_player_account(accounts_db, player, overrides, filename, slot)
+    if account is not None:
+        return account
+    if _update_account_cache(accounts_db, player):
+        return accounts_db.get(player.fingerprint)
+    return None
+
+
+def _parse_replay(results, accounts_db, filename, overrides=None):
     if not filename.endswith(".orarep"):
         return
     try:
@@ -81,7 +133,9 @@ def _parse_replay(results, accounts_db, filename):
     except Exception as e:
         logging.error(f"{op.basename(filename)}: {e}")
         return
-    if _update_account_cache(accounts_db, result.player0) and _update_account_cache(accounts_db, result.player1):
+    acc0 = _resolve_player_account(accounts_db, result.player0, overrides, filename, 0)
+    acc1 = _resolve_player_account(accounts_db, result.player1, overrides, filename, 1)
+    if acc0 is not None and acc1 is not None:
         results.append(result)
         logging.info(f"{op.basename(filename)}: recorded")
 
@@ -94,15 +148,15 @@ def _filter_period(results, period_dict: Optional[dict]):
     return [r for r in results if (start <= r.end_time.date() <= end)]
 
 
-def get_results(accounts_db, replays, period_dict: Optional[dict] = None):
+def get_results(accounts_db, replays, period_dict: Optional[dict] = None, overrides=None):
     results = []
     for filename in replays:
         if op.isdir(filename):
             for root, dirs, files in os.walk(filename):
                 for name in files:
-                    _parse_replay(results, accounts_db, op.join(root, name))
+                    _parse_replay(results, accounts_db, op.join(root, name), overrides)
         else:
-            _parse_replay(results, accounts_db, filename)
+            _parse_replay(results, accounts_db, filename, overrides)
     results = _filter_period(results, period_dict)
     return sorted(results, key=lambda r: r.end_time)
 

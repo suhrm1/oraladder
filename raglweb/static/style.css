@@ -131,6 +131,10 @@ td.status {
 	text-align: left;
 }
 
+td.strikes {
+	text-align: center;
+}
+
 td.spoiler {
 	background-color: black;
 	color: transparent;
