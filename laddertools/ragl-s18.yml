@@ -18,7 +18,7 @@ Divisions:
 
     Minions:
         - [ 15428, bete ]
-        - [ 14724, i am bad at this ]
+        - [ 14724, Cecile ]
         - [ 16066, milkman ]
         - [ 3952, anjew ]
         - [ 7387, TTTPPP ]
@@ -28,9 +28,10 @@ Divisions:
         - [ 11861, akpella ]
         - [ 22545, Stromberg ]
         - [ 16788, muleyyyy ]
-        - [ 18864, fiwo ]
+        - [ 17645, xaxl ]
 
     Recruits:
+        - [ 18864, fiwo ]
         - [ 6881, spetsnaz84 ]
         - [ 16314, Svedski ]
         - [ 22897, Wolffang ]
@@ -42,3 +43,6 @@ Divisions:
         - [ 14328, 1997cui ]
         - [ 9372, ERWARLORD ]
         - [ 25670, Gacid ]
+
+Forfeit:
+    - 18359 # goldie
