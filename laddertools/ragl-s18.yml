@@ -53,15 +53,15 @@ Strike_Limit: 3
 Strikes:
 #     - [ profile_id, decision date (YYYY-MM-DD), reason ]
 # akpella
-     - [ 11861, 2026-11-05, no communication for scheduling games vs. Stromberg ]
-     - [ 11861, 2026-11-05, no communication for scheduling games vs. xaxl ]
+    - [ 11861, 2026-11-05, no communication for scheduling games vs. Stromberg ]
+    - [ 11861, 2026-11-05, no communication for scheduling games vs. xaxl ]
 # 808MANN
-     - [ 18417, 2026-11-05, no communication for scheduling games vs. fiwo ]
-     - [ 18417, 2026-11-05, no communication for scheduling games vs. meowcat ]
+    - [ 18417, 2026-11-05, no communication for scheduling games vs. fiwo ]
+    - [ 18417, 2026-11-05, no communication for scheduling games vs. meowcat ]
 
 # Per-replay player ID overrides. (Wolffang forum account bugged)
 Replay_Overrides:
-     "Wolffang-vs-Gadderach-Game-1.orarep":
-         - [ "Wolffang", 22897 ]
-     "Wolffang-vs-Gadderach-Game-2.orarep":
-         - [ "Wolffang", 22897 ]
+    "Wolffang-vs-Gadderach-Game-1.orarep":
+        - [ "Wolffang", 22897 ]
+    "Wolffang-vs-Gadderach-Game-2.orarep":
+        - [ "Wolffang", 22897 ]

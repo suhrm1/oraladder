@@ -73,20 +73,24 @@ def _update_account_cache(accounts_db: dict, player: GamePlayerInfo):
     return True
 
 
+def _get_replay_override_map(overrides, filename):
+    if not overrides or filename is None:
+        return {}
+    replay_override = overrides.get(filename)
+    if replay_override is None:
+        replay_override = overrides.get(op.abspath(filename))
+    if replay_override is None:
+        replay_override = overrides.get(op.basename(filename))
+    return replay_override or {}
+
+
 def get_replay_override(overrides, filename, player, slot):
     """Look up a per-replay profile ID override for a player.
 
     ``overrides`` is a mapping of replay path/basename to a mapping of player
     selectors (slot number, display name or fingerprint) to profile IDs.
     """
-    if not overrides or filename is None:
-        return None
-
-    replay_override = overrides.get(filename)
-    if replay_override is None:
-        replay_override = overrides.get(op.abspath(filename))
-    if replay_override is None:
-        replay_override = overrides.get(op.basename(filename))
+    replay_override = _get_replay_override_map(overrides, filename)
     if not replay_override:
         return None
 
@@ -120,6 +124,8 @@ def _resolve_player_account(accounts_db, player, overrides, filename, slot):
     account = get_player_account(accounts_db, player, overrides, filename, slot)
     if account is not None:
         return account
+    if not player.fingerprint:
+        return None
     if _update_account_cache(accounts_db, player):
         return accounts_db.get(player.fingerprint)
     return None
@@ -130,14 +136,26 @@ def _parse_replay(results, accounts_db, filename, overrides=None):
         return
     try:
         result = replay.get_result(filename)
+    except replay.UnauthenticatedPlayersError as e:
+        if not _get_replay_override_map(overrides, filename):
+            logging.error(f"{op.basename(filename)}: {e}")
+            return
+        try:
+            result = replay.get_result(filename, allow_unauthenticated=True)
+        except Exception as retry_error:
+            logging.error(f"{op.basename(filename)}: {retry_error}")
+            return
     except Exception as e:
         logging.error(f"{op.basename(filename)}: {e}")
         return
     acc0 = _resolve_player_account(accounts_db, result.player0, overrides, filename, 0)
     acc1 = _resolve_player_account(accounts_db, result.player1, overrides, filename, 1)
-    if acc0 is not None and acc1 is not None:
-        results.append(result)
-        logging.info(f"{op.basename(filename)}: recorded")
+    if acc0 is None or acc1 is None:
+        if not result.player0.fingerprint or not result.player1.fingerprint:
+            logging.error(f"{op.basename(filename)}: unauthenticated player needs a matching replay override")
+        return
+    results.append(result)
+    logging.info(f"{op.basename(filename)}: recorded")
 
 
 def _filter_period(results, period_dict: Optional[dict]):

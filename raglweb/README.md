@@ -48,3 +48,5 @@ Replay_Overrides:
 
 The replay key may be an absolute path or a basename. Selectors may be a player
 display name, fingerprint, `winner`/`loser`, `player0`/`player1`, or `0`/`1`.
+For unauthenticated replay players there is no fingerprint, so use the player
+display name as the selector.

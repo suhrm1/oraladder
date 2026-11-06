@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from laddertools.replay import GamePlayerInfo, GameResult
+from laddertools.replay import GamePlayerInfo, GameResult, UnauthenticatedPlayersError
 from laddertools.utils import get_player_account, get_results
 
 
@@ -80,9 +80,57 @@ def test_get_results_supports_per_replay_overrides(monkeypatch):
     )
     overrides = {"legacy.orarep": {"player0": 1, "player1": 2}}
 
-    monkeypatch.setattr("laddertools.utils.replay.get_result", lambda filename: result)
+    monkeypatch.setattr("laddertools.utils.replay.get_result", lambda filename, allow_unauthenticated=False: result)
 
     assert get_results({}, ["legacy.orarep"], overrides=overrides) == [result]
+
+
+def test_unauthenticated_replay_is_parsed_when_override_matches(monkeypatch):
+    result = _result(
+        "/replays/unauthenticated.orarep",
+        ("", "Wolffang", "england", "random"),
+        ("fingerprint-b", "Gadderach", "russia", "random"),
+    )
+    accounts_db = {result.player1.fingerprint: (21158, "Gadderach", "")}
+    overrides = {"unauthenticated.orarep": {"Wolffang": 22897}}
+    calls = []
+
+    def fake_get_result(filename, allow_unauthenticated=False):
+        calls.append(allow_unauthenticated)
+        if not allow_unauthenticated:
+            raise UnauthenticatedPlayersError("not all players are authenticated")
+        return result
+
+    monkeypatch.setattr("laddertools.utils.replay.get_result", fake_get_result)
+
+    assert get_results(accounts_db, ["unauthenticated.orarep"], overrides=overrides) == [result]
+    assert calls == [False, True]
+
+
+def test_unauthenticated_replay_without_override_is_still_skipped(monkeypatch):
+    calls = []
+
+    def fake_get_result(filename, allow_unauthenticated=False):
+        calls.append(allow_unauthenticated)
+        raise UnauthenticatedPlayersError("not all players are authenticated")
+
+    monkeypatch.setattr("laddertools.utils.replay.get_result", fake_get_result)
+
+    assert get_results({}, ["unauthenticated.orarep"]) == []
+    assert calls == [False]
+
+
+def test_unauthenticated_replay_with_unrelated_override_is_still_skipped(monkeypatch):
+    calls = []
+
+    def fake_get_result(filename, allow_unauthenticated=False):
+        calls.append(allow_unauthenticated)
+        raise UnauthenticatedPlayersError("not all players are authenticated")
+
+    monkeypatch.setattr("laddertools.utils.replay.get_result", fake_get_result)
+
+    assert get_results({}, ["unauthenticated.orarep"], overrides={"other.orarep": {"Alpha": 1}}) == []
+    assert calls == [False]
 
 
 def test_get_player_account_without_overrides_matches_cache_lookup():
