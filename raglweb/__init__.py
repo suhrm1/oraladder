@@ -22,6 +22,7 @@ from datetime import date, datetime, timedelta
 
 from flask import (
     Flask,
+    abort,
     current_app,
     g,
     render_template,
@@ -417,57 +418,61 @@ def _make_division_prefix(division_title):
     return prefix
 
 
-@app.route("/replay/<replay_hash>")
-def replay(replay_hash):
-    db = _db_get()
+def _get_replay_row(db, replay_hash, outcomes_table):
     cur = db.execute(
-        """
+        f"""
         SELECT
             filename,
             p0.division as p0_division,
             p1.division as p1_division
-        FROM outcomes o
+        FROM {outcomes_table} o
         LEFT JOIN players p0 ON p0.profile_id = o.profile_id0
         LEFT JOIN players p1 ON p1.profile_id = o.profile_id1
         WHERE hash=:hash
-    """,
+        """,
         dict(hash=replay_hash),
     )
     row = cur.fetchone()
-
-    p0_division = row["p0_division"]
-    p1_division = row["p1_division"]
-    assert p0_division == p1_division
-    prefix = _make_division_prefix(p0_division)
-
-    fullpath = row["filename"]
-    original_filename = op.basename(fullpath)
-    attachment_filename = prefix + original_filename
     cur.close()
+    return row
+
+
+def _send_replay(row, prefix):
+    if row is None:
+        abort(404)
+    fullpath = row["filename"]
+    if not op.isfile(fullpath):
+        abort(404)
+    attachment_filename = prefix + op.basename(fullpath)
     return send_file(fullpath, as_attachment=True, download_name=attachment_filename)
+
+
+def _playoff_prefix():
+    season = app.config["SEASON"]
+    league = app.config["LEAGUE_TITLE_SHORT"]
+    return f"{league}-S{season:02d}-PLAYOFF-"
+
+
+@app.route("/replay/<replay_hash>")
+def replay(replay_hash):
+    db = _db_get()
+    row = _get_replay_row(db, replay_hash, "outcomes")
+    if row is not None:
+        p0_division = row["p0_division"]
+        p1_division = row["p1_division"]
+        if p0_division is None or p1_division is None or p0_division != p1_division:
+            abort(404)
+        prefix = _make_division_prefix(p0_division)
+    else:
+        # Older/stale links may point at a playoff replay through the regular
+        # replay route. Serve it when the hash exists there.
+        row = _get_replay_row(db, replay_hash, "playoff_outcomes")
+        prefix = _playoff_prefix()
+    return _send_replay(row, prefix)
 
 
 @app.route("/replay_playoff/<replay_hash>")
 def replay_playoff(replay_hash):
     db = _db_get()
-    cur = db.execute(
-        """
-        SELECT filename
-        FROM playoff_outcomes o
-        LEFT JOIN players p0 ON p0.profile_id = o.profile_id0
-        LEFT JOIN players p1 ON p1.profile_id = o.profile_id1
-        WHERE hash=:hash
-    """,
-        dict(hash=replay_hash),
-    )
-    row = cur.fetchone()
-
-    season = app.config["SEASON"]
-    league = app.config["LEAGUE_TITLE_SHORT"]
-    prefix = f"{league}-S{season:02d}-PLAYOFF-"
-
-    fullpath = row["filename"]
-    original_filename = op.basename(fullpath)
-    attachment_filename = prefix + original_filename
-    cur.close()
-    return send_file(fullpath, as_attachment=True, download_name=attachment_filename)
+    row = _get_replay_row(db, replay_hash, "playoff_outcomes")
+    return _send_replay(row, _playoff_prefix())
