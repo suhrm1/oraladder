@@ -26,6 +26,7 @@ from flask import (
     current_app,
     g,
     render_template,
+    request,
     send_file,
     jsonify,
 )
@@ -134,6 +135,8 @@ def _get_games(db, outcomes_table, order="DESC"):
             profile_id1,
             p0.profile_name as p0_name,
             p1.profile_name as p1_name,
+            p0.division as p0_division,
+            p1.division as p1_division,
             map_title
         FROM {outcomes_table} o
         LEFT JOIN players p0 ON p0.profile_id = o.profile_id0
@@ -152,6 +155,8 @@ def _get_games(db, outcomes_table, order="DESC"):
             p1=match["p1_name"],
             p0_id=match["profile_id0"],
             p1_id=match["profile_id1"],
+            p0_division=match["p0_division"],
+            p1_division=match["p1_division"],
         )
         games.append(game)
 
@@ -209,15 +214,36 @@ def games():
     db = _db_get()
     games = _get_games(db, "outcomes")
 
+    selected_division = request.args.get("division", "").strip()
+    player_query = request.args.get("player", "").strip()
+
+    if selected_division:
+        games = [game for game in games if game["p0_division"] == selected_division]
+
+    if player_query:
+        needle = player_query.casefold()
+        games = [
+            game for game in games if needle in (game["p0"] or "").casefold() or needle in (game["p1"] or "").casefold()
+        ]
+
     # create an unspoiled list of games (players ordered alphanumerically, additional "winner" attribute)
     for game in games:
         p0, p0_id, p1, p1_id = game["p0"], game["p0_id"], game["p1"], game["p1_id"]
         # re-order players alphanumerically if necessary
-        if not _ordered_alphanumerically(p0, p1):
+        if p0 and p1 and not _ordered_alphanumerically(p0, p1):
             game.update(p0=p1, p0_id=p1_id, p1=p0, p1_id=p0_id)
         game["winner"] = p0
 
-    return render_template("games.html", cfg=cfg, games=games)
+    divisions = [row["division"] for row in db.execute("SELECT DISTINCT division FROM players ORDER BY division")]
+
+    return render_template(
+        "games.html",
+        cfg=cfg,
+        games=games,
+        divisions=divisions,
+        selected_division=selected_division,
+        player_query=player_query,
+    )
 
 
 @app.route("/games/json")

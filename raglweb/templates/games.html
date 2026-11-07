@@ -4,6 +4,26 @@
 {% block title %}Latest games{% endblock %}
 
 {% block content %}
+<form class="filters" method="get" action="{{ url_for('games') }}">
+	<label>
+		Division
+		<select name="division">
+			<option value="">All divisions</option>
+			{% for division in divisions %}
+			<option value="{{ division }}"{% if division == selected_division %} selected{% endif %}>{{ division }}</option>
+			{% endfor %}
+		</select>
+	</label>
+	<label>
+		Player
+		<input type="search" name="player" value="{{ player_query }}" placeholder="Search player name">
+	</label>
+	<button type="submit">Filter</button>
+	{% if selected_division or player_query %}
+	<a href="{{ url_for('games') }}">Clear</a>
+	{% endif %}
+</form>
+
 <table>
 	<thead>
 		<tr>
@@ -23,6 +43,10 @@
 				vs. <a href="{{ url_for('player', profile_id=game.p1_id) }}">{{ game.p1 }}</a></td>
 			<td class="spoiler">{{ game.winner }}</td>
 			<td><a href="{{ url_for('replay', replay_hash=game.hash) }}">📥</a></td>
+		</tr>
+		{%- else %}
+		<tr>
+			<td colspan="5" class="nogame">No games found.</td>
 		</tr>
 		{%- endfor %}
 	</tbody>

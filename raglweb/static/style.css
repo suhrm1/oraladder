@@ -58,6 +58,50 @@ table {
 	text-align: center;
 }
 
+form.filters {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5em 1em;
+	align-items: center;
+	justify-content: center;
+	margin: 1em 0;
+}
+
+form.filters label {
+	display: flex;
+	gap: 0.4em;
+	align-items: center;
+}
+
+form.filters select,
+form.filters input {
+	font: inherit;
+	color: var(--color_text0);
+	background-color: var(--color_content);
+	border: 1px solid var(--color_hl);
+	padding: 0.3em 0.5em;
+}
+
+form.filters input {
+	min-width: 12em;
+}
+
+form.filters button,
+form.filters a {
+	font: inherit;
+	color: var(--color_text0);
+	background-color: var(--color_hl);
+	border: 1px solid var(--color_hl);
+	padding: 0.3em 0.8em;
+	cursor: pointer;
+}
+
+form.filters button:hover,
+form.filters a:hover {
+	background-color: var(--color_thead);
+	color: var(--color_text1);
+}
+
 h1 {
 	font-size: 2em;
 	text-align: center;
