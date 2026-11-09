@@ -58,6 +58,50 @@ table {
 	text-align: center;
 }
 
+form.filters {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5em 1em;
+	align-items: center;
+	justify-content: center;
+	margin: 1em 0;
+}
+
+form.filters label {
+	display: flex;
+	gap: 0.4em;
+	align-items: center;
+}
+
+form.filters select,
+form.filters input {
+	font: inherit;
+	color: var(--color_text0);
+	background-color: var(--color_content);
+	border: 1px solid var(--color_hl);
+	padding: 0.3em 0.5em;
+}
+
+form.filters input {
+	min-width: 12em;
+}
+
+form.filters button,
+form.filters a {
+	font: inherit;
+	color: var(--color_text0);
+	background-color: var(--color_hl);
+	border: 1px solid var(--color_hl);
+	padding: 0.3em 0.8em;
+	cursor: pointer;
+}
+
+form.filters button:hover,
+form.filters a:hover {
+	background-color: var(--color_thead);
+	color: var(--color_text1);
+}
+
 h1 {
 	font-size: 2em;
 	text-align: center;
@@ -65,6 +109,36 @@ h1 {
 
 h2 {
 	border-bottom: 1px solid;
+}
+
+p.scoreboard-hint {
+	font-style: italic;
+	text-align: center;
+}
+
+details.scoreboard {
+	margin: 1em 0;
+}
+
+details.scoreboard > summary {
+	border-bottom: 1px solid;
+	cursor: pointer;
+	font-size: 1.5em;
+	font-weight: bold;
+	padding: 0.2em 0;
+	user-select: none;
+}
+
+details.scoreboard > summary:hover {
+	color: var(--color_light1);
+}
+
+details.scoreboard > summary::marker {
+	color: var(--color_light0);
+}
+
+details.scoreboard[open] > summary {
+	margin-bottom: 0.5em;
 }
 
 h1::before, h1::after {
@@ -131,6 +205,10 @@ td.status {
 	text-align: left;
 }
 
+td.strikes {
+	text-align: center;
+}
+
 td.spoiler {
 	background-color: black;
 	color: transparent;
@@ -176,4 +254,23 @@ div.announcement {
     background-color: var(--color_hl);
     color: var(--color_text0);
     width: fit-content;
+}
+
+footer {
+	clear: both;
+	margin-top: 2em;
+	padding-top: 0.5em;
+	border-top: 1px solid var(--color_hl);
+	font-size: 0.8em;
+	color: #909090;
+	text-align: center;
+}
+
+footer ul.links {
+	list-style-type: none;
+	padding-left: 0;
+}
+
+footer ul.links li {
+	padding: 4px 0;
 }

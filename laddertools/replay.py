@@ -37,6 +37,10 @@ class GamePlayerInfo:
         return self.display_name
 
 
+class UnauthenticatedPlayersError(Exception):
+    pass
+
+
 class GameResult:
     def __init__(self, start_time, end_time, filename, player0, player1, map_uid, map_title, **kwargs):
         self.start_time: datetime = (
@@ -86,7 +90,7 @@ def _parse_game_info(input_file):
     return miniyaml.load(game_yaml)
 
 
-def get_result(filename) -> GameResult:
+def get_result(filename, allow_unauthenticated=False) -> GameResult:
     with open(filename, "rb") as f:
         game_info = _parse_game_info(f)
 
@@ -125,11 +129,14 @@ def get_result(filename) -> GameResult:
             p1_selected_faction = "Any" if player1["IsRandomFaction"] == "True" else p1_faction
 
         if not p0_fingerprint or not p1_fingerprint:
-            p0_auth = "yes" if p0_fingerprint else "no"
-            p1_auth = "yes" if p1_fingerprint else "no"
-            raise Exception(f"not all players are authenticated ({p0_name}: {p0_auth}, {p1_name}: {p1_auth})")
+            if not allow_unauthenticated:
+                p0_auth = "yes" if p0_fingerprint else "no"
+                p1_auth = "yes" if p1_fingerprint else "no"
+                raise UnauthenticatedPlayersError(
+                    f"not all players are authenticated ({p0_name}: {p0_auth}, {p1_name}: {p1_auth})"
+                )
 
-        if p0_fingerprint == p1_fingerprint:
+        if p0_fingerprint and p1_fingerprint and p0_fingerprint == p1_fingerprint:
             raise Exception(f"player {p0_name} and {p1_name} are the same player")
 
         #

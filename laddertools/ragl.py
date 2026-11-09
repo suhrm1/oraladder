@@ -23,18 +23,67 @@ import sqlite3
 import yaml
 from filelock import FileLock, Timeout
 
-from .utils import get_results
+from .utils import get_player_account, get_replay_override, get_results
+
+STRIKE_LIMIT_DEFAULT = 3
+
+
+def _format_timestamp(value):
+    if value is None:
+        return None
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return str(value)
+
+
+def _parse_strikes(players_info):
+    """Normalize the optional ``Strikes`` YAML section into SQL rows."""
+    strikes = []
+    for entry in players_info.get("Strikes") or []:
+        if isinstance(entry, dict):
+            profile_id = entry.get("profile_id")
+            timestamp = entry.get("date", entry.get("decision_timestamp"))
+            reason = entry.get("reason")
+        else:
+            profile_id = entry[0]
+            timestamp = entry[1]
+            reason = entry[2] if len(entry) > 2 else None
+        strikes.append((int(profile_id), _format_timestamp(timestamp), reason))
+    return strikes
+
+
+def _parse_replay_overrides(players_info):
+    """Normalize per-replay player-ID overrides.
+
+    Accepted YAML shapes::
+
+        Replay_Overrides:
+            "some-replay.orarep":
+                "PlayerName": 12345
+                "player1": 67890
+
+        Replay_Overrides:
+            "some-replay.orarep":
+                - [ "PlayerName", 12345 ]
+                - [ "player1", 67890 ]
+    """
+    overrides = {}
+    for replay_key, value in (players_info.get("Replay_Overrides") or {}).items():
+        items = value.items() if isinstance(value, dict) else value
+        overrides[str(replay_key)] = {str(selector): int(profile_id) for selector, profile_id in items}
+    return overrides
 
 
 class _Player:
-    def __init__(self, profile_id, name, avatar_url, extra_info):
+    def __init__(self, profile_id, name, avatar_url, extra_info, strike_count=0, strike_limit=STRIKE_LIMIT_DEFAULT):
         self.profile_id = profile_id
         self.name = name
         self.avatar_url = avatar_url
         self.wins = 0
         self.losses = 0
+        self.strikes = strike_count
         self.division = self._get_player_division(extra_info["Divisions"], profile_id)
-        self.status = self._get_player_status(extra_info, profile_id)
+        self.status = self._get_player_status(extra_info, profile_id, strike_count, strike_limit)
 
     @staticmethod
     def _get_player_division(divisions, profile_id):
@@ -45,8 +94,10 @@ class _Player:
         return None
 
     @staticmethod
-    def _get_player_status(extra_info, profile_id):
-        return "SF" if profile_id in extra_info.get("Forfeit", []) else None
+    def _get_player_status(extra_info, profile_id, strike_count=0, strike_limit=STRIKE_LIMIT_DEFAULT):
+        if profile_id in extra_info.get("Forfeit", []) or strike_count >= strike_limit:
+            return "SF"
+        return None
 
     @property
     def sql_row(self):
@@ -106,21 +157,34 @@ def _records_count(records, outcome):
     return len([r for r in records if outcome == r.profile_pair])
 
 
-def _get_players_outcomes(accounts_db, results, players_info):
+def _get_players_outcomes(accounts_db, results, players_info, overrides=None):
 
     profile2player = {}
     outcomes = []
     extra_outcomes = []
 
+    strikes = _parse_strikes(players_info)
+    strike_counts = {}
+    for profile_id, _, _ in strikes:
+        strike_counts[profile_id] = strike_counts.get(profile_id, 0) + 1
+    strike_limit = int(players_info.get("Strike_Limit", STRIKE_LIMIT_DEFAULT))
+
     # XXX: currently no sane way of querying profile names from profile IDs, so
     # there are hardcoded in the info file
     for division, players in players_info["Divisions"].items():
         for profile_id, profile_name in players:
-            profile2player[profile_id] = _Player(profile_id, profile_name, "", players_info)
+            profile2player[profile_id] = _Player(
+                profile_id,
+                profile_name,
+                "",
+                players_info,
+                strike_counts.get(profile_id, 0),
+                strike_limit,
+            )
 
     for result in results:
-        acc0 = accounts_db.get(result.player0.fingerprint)
-        acc1 = accounts_db.get(result.player1.fingerprint)
+        acc0 = get_player_account(accounts_db, result.player0, overrides, result.filename, 0)
+        acc1 = get_player_account(accounts_db, result.player1, overrides, result.filename, 1)
         if acc0 is None or acc1 is None:
             continue
         pid0, p0_name, p0_avatar = acc0
@@ -128,13 +192,26 @@ def _get_players_outcomes(accounts_db, results, players_info):
         p0 = profile2player.get(pid0)
         p1 = profile2player.get(pid1)
         if None in (p0, p1):  # players not registered
+            override0 = get_replay_override(overrides, result.filename, result.player0, 0)
+            override1 = get_replay_override(overrides, result.filename, result.player1, 1)
+            if override0 is not None or override1 is not None:
+                logging.warning(
+                    f"{op.basename(result.filename)}: replay override points to unregistered "
+                    f"profile ID(s): {pid0}, {pid1}"
+                )
             continue
-        # Replace hardcoded names with name obtained from the API
-        p0.name = p0_name
-        p1.name = p1_name
+        # Replace hardcoded names with name obtained from the API. Per-replay
+        # overrides deliberately leave the name/avatar unset so the season
+        # configuration remains canonical.
+        if p0_name:
+            p0.name = p0_name
+        if p1_name:
+            p1.name = p1_name
         # Replace empty avatars with the one obtained from the API
-        p0.avatar_url = p0_avatar
-        p1.avatar_url = p1_avatar
+        if p0_avatar is not None:
+            p0.avatar_url = p0_avatar
+        if p1_avatar is not None:
+            p1.avatar_url = p1_avatar
         if None in (p0.division, p1.division):
             continue
 
@@ -189,6 +266,7 @@ def _main(args):
     c.execute("DROP TABLE IF EXISTS playoff_playersets")
     c.execute("DROP TABLE IF EXISTS playoffs")
     c.execute("DROP TABLE IF EXISTS forfeit_games")
+    c.execute("DROP TABLE IF EXISTS strikes")
 
     with open(args.schema) as f:
         c.executescript(f.read())
@@ -198,19 +276,23 @@ def _main(args):
     request_accounts = c.execute("SELECT * FROM accounts")
     accounts_db = {fp: (pid, pname, avatar_url) for fp, pid, pname, avatar_url in request_accounts.fetchall()}
 
-    results = get_results(accounts_db, args.replays)
-
     with open(args.playersinfo) as f:
         players_info = yaml.safe_load(f)
-    players, outcomes, extra_outcomes = _get_players_outcomes(accounts_db, results, players_info)
+
+    overrides = _parse_replay_overrides(players_info)
+    results = get_results(accounts_db, args.replays, overrides=overrides)
+
+    players, outcomes, extra_outcomes = _get_players_outcomes(accounts_db, results, players_info, overrides)
 
     outcomes_sql = [o.sql_row for o in outcomes]
     players_sql = [p.sql_row for p in players]
     accounts_sql = [(fp, acc[0], acc[1], acc[2]) for fp, acc in accounts_db.items() if acc is not None]
+    strikes_sql = _parse_strikes(players_info)
 
     c.executemany("INSERT OR IGNORE INTO accounts VALUES (?,?,?,?)", accounts_sql)
     c.executemany("INSERT OR IGNORE INTO players VALUES (?,?,?,?,?,?,?)", players_sql)
     c.executemany("INSERT OR IGNORE INTO outcomes VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", outcomes_sql)
+    c.executemany("INSERT OR IGNORE INTO strikes VALUES (?,?,?)", strikes_sql)
 
     playoffs = players_info.get("Playoffs")
     if playoffs:

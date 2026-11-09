@@ -63,4 +63,10 @@ CREATE TABLE forfeit_games (
 	profile_id1           INTEGER NOT NULL,
 	decision_timestamp    TEXT NOT NULL,
 	reason                TEXT DEFAULT NULL
-)
+);
+
+CREATE TABLE strikes (
+	profile_id            INTEGER NOT NULL,
+	decision_timestamp    TEXT NOT NULL,
+	reason                TEXT DEFAULT NULL
+);

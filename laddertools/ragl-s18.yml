@@ -1,0 +1,72 @@
+Divisions:
+
+    Masters:
+        - [ 16814, Gargamel ]
+        - [ 19305, sir123 ]
+        - [ 15899, tux ]
+        - [ 7304, Upps ]
+        - [ 6793, Unano ]
+        - [ 24123, dark ]
+        - [ 11913, Duke Bones ]
+        - [ 13710, Mint ]
+        - [ 6430, Blackened ]
+        - [ 8869, Sigil ]
+        - [ 5292, Admiral Mo ]
+        - [ 20510, Amelza ]
+        - [ 6766, ZxGanon ]
+        - [ 6748, Orb ]
+
+    Minions:
+        - [ 15428, bete ]
+        - [ 14724, Cecile ]
+        - [ 16066, milkman ]
+        - [ 3952, anjew ]
+        - [ 7387, TTTPPP ]
+        - [ 7714, Hans ]
+        - [ 6751, Tailix Killa Mentor ]
+        - [ 12654, Therapist ]
+        - [ 11861, akpella ]
+        - [ 22545, Stromberg ]
+        - [ 16788, muleyyyy ]
+        - [ 17645, xaxl ]
+
+    Recruits:
+        - [ 18864, fiwo ]
+        - [ 6881, spetsnaz84 ]
+        - [ 16314, Svedski ]
+        - [ 22897, Wolffang ]
+        - [ 18417, 808MANN ]
+        - [ 16474, implies ]
+        - [ 18359, goldie ]
+        - [ 21158, Gadderach ]
+        - [ 21011, meowcat ]
+        - [ 14328, 1997cui ]
+        - [ 9372, ERWARLORD ]
+        - [ 25670, Gacid ]
+
+Forfeit:
+    - 18359 # goldie
+    - 8869 # Sigil
+
+# Maximum number of strikes before a player is automatically disqualified (SF).
+Strike_Limit: 3
+
+Strikes:
+#     - [ profile_id, decision date (YYYY-MM-DD), reason ]
+# akpella
+    - [ 11861, 2026-11-05, no communication for scheduling games vs. Stromberg ]
+    - [ 11861, 2026-11-05, no communication for scheduling games vs. xaxl ]
+# 808MANN
+    - [ 18417, 2026-11-05, no communication for scheduling games vs. fiwo ]
+    - [ 18417, 2026-11-05, no communication for scheduling games vs. meowcat ]
+
+# Per-replay player ID overrides. (Wolffang forum account bugged)
+Replay_Overrides:
+    "Wolffang-vs-Gadderach-Game-1.orarep":
+        - [ "Wolffang", 22897 ]
+    "Wolffang-vs-Gadderach-Game-2.orarep":
+        - [ "Wolffang", 22897 ]
+    "implies-vs-wolffang-g1.orarep":
+        - [ "Wolffang", 22897 ]
+    "implies-vs-wolffang-g2.orarep":
+        - [ "Wolffang", 22897 ]

@@ -22,19 +22,20 @@ from datetime import date, datetime, timedelta
 
 from flask import (
     Flask,
+    abort,
     current_app,
     g,
     render_template,
+    request,
     send_file,
     jsonify,
 )
 
-from .forfeit_games import (
-    get_player_forfeit_games,
-    get_forfeit_win_loss_stats,
-)
+from .forfeit_games import get_player_forfeit_games
 from .playoffs import get_playoff2, get_playoff4, PlayoffOutcome
 from .announcements import get_announcements
+from .standings import compute_standings
+from .strikes import get_player_strikes, get_strike_stats
 
 
 def _db_get():
@@ -62,6 +63,7 @@ def create_app():
     print("Database path: " + db_path)
     app.config.from_mapping(
         DATABASE=db_path,
+        STRIKE_LIMIT=3,
     )
     cfg_file = os.environ.get("RAGL_CONFIG", app.instance_path + "/ragl_config.py")
     app.config.from_pyfile(cfg_file)
@@ -79,22 +81,7 @@ cfg = app.config
 def scoreboards():
     db = _db_get()
 
-    cur = db.execute(
-        """
-        SELECT
-            COUNT(profile_id) as nb_profiles,
-            division
-        FROM players
-        WHERE status IS NULL
-        GROUP BY division
-        """
-    )
-
-    matchup_count = app.config["GAMES_PER_MATCH"]
-    max_matches = {row["division"]: (row["nb_profiles"] - 1) * matchup_count for row in cur}
-
-    cur = db.execute(
-        """
+    players = db.execute("""
         SELECT
             profile_id,
             profile_name,
@@ -104,46 +91,30 @@ def scoreboards():
             division,
             status
         FROM players
-        ORDER BY division, status, wins DESC
-        """
+        """).fetchall()
+    outcomes = db.execute("SELECT profile_id0, profile_id1 FROM outcomes").fetchall()
+    forfeit_games = db.execute("SELECT profile_id0, profile_id1 FROM forfeit_games").fetchall()
+    strike_counts = get_strike_stats(db)
+
+    scoreboards = compute_standings(
+        players,
+        outcomes,
+        forfeit_games,
+        strike_counts,
+        app.config["GAMES_PER_MATCH"],
+        app.config.get("STRIKE_LIMIT", 3),
     )
 
-    forfeit_games = get_forfeit_win_loss_stats(db)
-
-    scoreboards = {}
-    for profile_id, profile_name, avatar_url, wins, losses, division, status in cur:
-        rows = scoreboards.get(division, [])
-        forfeit_wins = forfeit_games[profile_id]["wins"]
-        forfeit_losses = forfeit_games[profile_id]["losses"]
-        nb_played = wins + forfeit_wins + losses + forfeit_losses
-        if status == "SF":
-            status = "⛔ Season Forfeit"
-        elif nb_played == max_matches[division]:
-            status = "✅ All matchups completed"
-        else:
-            status = ""  # TODO: handle late status
-
-        rows.append(
-            dict(
-                profile_id=profile_id,
-                name=profile_name,
-                avatar_url=avatar_url,
-                played=nb_played,
-                max_matches=max_matches[division],
-                wins=wins + forfeit_wins,
-                losses=losses + forfeit_losses,
-                winrate=(wins + forfeit_wins) / nb_played * 100 if nb_played else 0,
-                status=status or "",
-            )
-        )
-
-        # Take into account forfeit games when sorting the list
-        rows = sorted(rows, key=lambda row: (row["wins"], row["winrate"]), reverse=True)
-        # Set player rank based on sorted list
-        for i, r in enumerate(rows, 1):
-            r["row_id"] = "SF" if "Season Forfeit" in r["status"] else i
-
-        scoreboards[division] = rows
+    for rows in scoreboards.values():
+        for row in rows:
+            if row["disqualified"]:
+                row["status"] = f"⛔ Disqualified ({row['strikes']} strikes)"
+            elif row["status"] == "SF":
+                row["status"] = "⛔ Season Forfeit"
+            elif row["played"] == row["max_matches"]:
+                row["status"] = "✅ All matchups completed"
+            else:
+                row["status"] = ""  # TODO: handle late status
 
     return render_template(
         "scoreboards.html",
@@ -156,8 +127,7 @@ def scoreboards():
 
 
 def _get_games(db, outcomes_table, order="DESC"):
-    cur = db.execute(
-        f"""
+    cur = db.execute(f"""
         SELECT
             hash,
             end_time,
@@ -165,12 +135,13 @@ def _get_games(db, outcomes_table, order="DESC"):
             profile_id1,
             p0.profile_name as p0_name,
             p1.profile_name as p1_name,
+            p0.division as p0_division,
+            p1.division as p1_division,
             map_title
         FROM {outcomes_table} o
         LEFT JOIN players p0 ON p0.profile_id = o.profile_id0
         LEFT JOIN players p1 ON p1.profile_id = o.profile_id1
-        ORDER BY o.end_time {order}"""
-    )
+        ORDER BY o.end_time {order}""")
     matches = cur.fetchall()
     cur.close()
 
@@ -184,6 +155,8 @@ def _get_games(db, outcomes_table, order="DESC"):
             p1=match["p1_name"],
             p0_id=match["profile_id0"],
             p1_id=match["profile_id1"],
+            p0_division=match["p0_division"],
+            p1_division=match["p1_division"],
         )
         games.append(game)
 
@@ -241,15 +214,36 @@ def games():
     db = _db_get()
     games = _get_games(db, "outcomes")
 
+    selected_division = request.args.get("division", "").strip()
+    player_query = request.args.get("player", "").strip()
+
+    if selected_division:
+        games = [game for game in games if game["p0_division"] == selected_division]
+
+    if player_query:
+        needle = player_query.casefold()
+        games = [
+            game for game in games if needle in (game["p0"] or "").casefold() or needle in (game["p1"] or "").casefold()
+        ]
+
     # create an unspoiled list of games (players ordered alphanumerically, additional "winner" attribute)
     for game in games:
         p0, p0_id, p1, p1_id = game["p0"], game["p0_id"], game["p1"], game["p1_id"]
         # re-order players alphanumerically if necessary
-        if not _ordered_alphanumerically(p0, p1):
+        if p0 and p1 and not _ordered_alphanumerically(p0, p1):
             game.update(p0=p1, p0_id=p1_id, p1=p0, p1_id=p0_id)
         game["winner"] = p0
 
-    return render_template("games.html", cfg=cfg, games=games)
+    divisions = [row["division"] for row in db.execute("SELECT DISTINCT division FROM players ORDER BY division")]
+
+    return render_template(
+        "games.html",
+        cfg=cfg,
+        games=games,
+        divisions=divisions,
+        selected_division=selected_division,
+        player_query=player_query,
+    )
 
 
 @app.route("/games/json")
@@ -367,8 +361,11 @@ def player(profile_id):
     records = _get_player_records(db, profile_id)
     records = records | get_player_forfeit_games(db, profile_id)
     opponents = _get_player_opponents(db, profile_id, player_info["division"])
+    strikes = get_player_strikes(db, profile_id)
 
     cfg = app.config
+    strike_limit = cfg.get("STRIKE_LIMIT", 3)
+    strike_count = len(strikes)
 
     # Complete opponent information with potential records
     matches = []
@@ -393,7 +390,9 @@ def player(profile_id):
 
     matchup_expected_done = int(matchup_count * group_stage_completion)
 
-    if player_info["status"] == "SF":
+    if strike_count >= strike_limit:
+        status = f"⛔ Disqualified ({strike_count} strikes)"
+    elif player_info["status"] == "SF":
         status = "⛔ Season Forfeit"
     elif matchup_count == matchup_done_count:
         status = "✅ All matchups completed"
@@ -409,6 +408,9 @@ def player(profile_id):
         profile_name=player_info["profile_name"],
         avatar_url=player_info["avatar_url"],
         status=status,
+        strikes=strikes,
+        strike_count=strike_count,
+        strike_limit=strike_limit,
         matchup_done_count=matchup_done_count,
         matchup_count=matchup_count,
         start_time=app.config["START_TIME"],
@@ -442,57 +444,61 @@ def _make_division_prefix(division_title):
     return prefix
 
 
-@app.route("/replay/<replay_hash>")
-def replay(replay_hash):
-    db = _db_get()
+def _get_replay_row(db, replay_hash, outcomes_table):
     cur = db.execute(
-        """
+        f"""
         SELECT
             filename,
             p0.division as p0_division,
             p1.division as p1_division
-        FROM outcomes o
+        FROM {outcomes_table} o
         LEFT JOIN players p0 ON p0.profile_id = o.profile_id0
         LEFT JOIN players p1 ON p1.profile_id = o.profile_id1
         WHERE hash=:hash
-    """,
+        """,
         dict(hash=replay_hash),
     )
     row = cur.fetchone()
-
-    p0_division = row["p0_division"]
-    p1_division = row["p1_division"]
-    assert p0_division == p1_division
-    prefix = _make_division_prefix(p0_division)
-
-    fullpath = row["filename"]
-    original_filename = op.basename(fullpath)
-    attachment_filename = prefix + original_filename
     cur.close()
+    return row
+
+
+def _send_replay(row, prefix):
+    if row is None:
+        abort(404)
+    fullpath = row["filename"]
+    if not op.isfile(fullpath):
+        abort(404)
+    attachment_filename = prefix + op.basename(fullpath)
     return send_file(fullpath, as_attachment=True, download_name=attachment_filename)
+
+
+def _playoff_prefix():
+    season = app.config["SEASON"]
+    league = app.config["LEAGUE_TITLE_SHORT"]
+    return f"{league}-S{season:02d}-PLAYOFF-"
+
+
+@app.route("/replay/<replay_hash>")
+def replay(replay_hash):
+    db = _db_get()
+    row = _get_replay_row(db, replay_hash, "outcomes")
+    if row is not None:
+        p0_division = row["p0_division"]
+        p1_division = row["p1_division"]
+        if p0_division is None or p1_division is None or p0_division != p1_division:
+            abort(404)
+        prefix = _make_division_prefix(p0_division)
+    else:
+        # Older/stale links may point at a playoff replay through the regular
+        # replay route. Serve it when the hash exists there.
+        row = _get_replay_row(db, replay_hash, "playoff_outcomes")
+        prefix = _playoff_prefix()
+    return _send_replay(row, prefix)
 
 
 @app.route("/replay_playoff/<replay_hash>")
 def replay_playoff(replay_hash):
     db = _db_get()
-    cur = db.execute(
-        """
-        SELECT filename
-        FROM playoff_outcomes o
-        LEFT JOIN players p0 ON p0.profile_id = o.profile_id0
-        LEFT JOIN players p1 ON p1.profile_id = o.profile_id1
-        WHERE hash=:hash
-    """,
-        dict(hash=replay_hash),
-    )
-    row = cur.fetchone()
-
-    season = app.config["SEASON"]
-    league = app.config["LEAGUE_TITLE_SHORT"]
-    prefix = f"{league}-S{season:02d}-PLAYOFF-"
-
-    fullpath = row["filename"]
-    original_filename = op.basename(fullpath)
-    attachment_filename = prefix + original_filename
-    cur.close()
-    return send_file(fullpath, as_attachment=True, download_name=attachment_filename)
+    row = _get_replay_row(db, replay_hash, "playoff_outcomes")
+    return _send_replay(row, _playoff_prefix())
