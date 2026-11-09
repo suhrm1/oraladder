@@ -46,6 +46,7 @@ Divisions:
 
 Forfeit:
     - 18359 # goldie
+    - 8869 # Sigil
 
 # Maximum number of strikes before a player is automatically disqualified (SF).
 Strike_Limit: 3
@@ -64,4 +65,8 @@ Replay_Overrides:
     "Wolffang-vs-Gadderach-Game-1.orarep":
         - [ "Wolffang", 22897 ]
     "Wolffang-vs-Gadderach-Game-2.orarep":
+        - [ "Wolffang", 22897 ]
+    "implies-vs-wolffang-g1.orarep":
+        - [ "Wolffang", 22897 ]
+    "implies-vs-wolffang-g2.orarep":
         - [ "Wolffang", 22897 ]
